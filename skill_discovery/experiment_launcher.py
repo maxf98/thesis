@@ -1,5 +1,5 @@
 import tensorflow as tf
-from tf_agents.environments import suite_pybullet
+#from tf_agents.environments import suite_pybullet
 from tf_agents.environments import tf_py_environment
 from tf_agents.utils import common
 from tf_agents.replay_buffers import tf_uniform_replay_buffer
@@ -40,6 +40,8 @@ actor_fc_layer_params = (256, 256)
 critic_joint_fc_layer_params = (256, 256)
 
 tempdir = os.getenv("TEST_TMPDIR", tempfile.gettempdir())
+
+print(tf.__version__)
 
 
 def run_experiment():

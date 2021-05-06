@@ -18,9 +18,6 @@ from diayn_discriminator import DIAYNDiscriminator
 initial_collect_steps = 1000
 num_epochs = 50
 collect_steps_per_epoch = 1000
-eval_interval = 4
-num_eval_episodes = 3
-num_eval_steps = 1000
 
 
 class SkillDiscoveryAlgorithm():
@@ -39,11 +36,11 @@ class SkillDiscoveryAlgorithm():
         self._replay_buffer = replay_buffer
         rl_dataset = self._replay_buffer.as_dataset(
                 num_parallel_calls=3,
-                sample_batch_size=1024,
+                sample_batch_size=256,
                 num_steps=2).prefetch(3)
         discriminator_dataset = self._replay_buffer.as_dataset(
                 num_parallel_calls=3,
-                sample_batch_size=1024,
+                sample_batch_size=256,
                 num_steps=1).prefetch(3)
         self._train_batch_iterator = iter(rl_dataset)
         self._discriminator_batch_iterator = iter(discriminator_dataset)
@@ -76,20 +73,6 @@ class SkillDiscoveryAlgorithm():
     def _discriminator_training_batch(self):
         return next(self._discriminator_batch_iterator)
 
-    def _evaluate(self, environment: TFEnvironment, policy: tf_policy.TFPolicy, num_episodes=5):
-        reward = 0
-        for _ in range(num_episodes):
-            time_step = environment.reset()
-
-            for i in range(num_eval_steps):
-                #environment.render()
-                action_step = policy.action(time_step)
-                time_step = environment.step(action_step.action)
-                reward += time_step.reward
-
-        avg_reward = reward / num_episodes
-        return avg_reward.numpy()[0]
-
     def _relabel_ir(self, batch):
         obs_l, obs_r = tf.split(batch.observation, [1, 1], axis=1)
 
@@ -114,8 +97,8 @@ class SkillDiscoveryAlgorithm():
             print('epoch {}'.format(epoch))
             time_step = self._train_env.reset()
 
+            z = self._skill_prior.sample().numpy()
             for i in range(collect_steps_per_epoch):
-                z = self._skill_prior.sample().numpy()
 
                 aug_time_step = utils.aug_time_step(time_step, z, self._num_skills)
                 action_step = self._rl_agent.collect_policy.action(aug_time_step)
@@ -127,18 +110,18 @@ class SkillDiscoveryAlgorithm():
                 time_step = next_time_step
 
             # update policy with rl_algorithm
-            experience = self._rl_training_batch()
-            train_loss = self._rl_agent.train(experience)
+            for _ in range(100):
+                experience = self._rl_training_batch()
+                train_loss = self._rl_agent.train(experience)
 
             # train discriminator
-            experience, _ = self._discriminator_training_batch()
-            self._discriminator.train(experience)
+            for _ in range(100):
+                experience, _ = self._discriminator_training_batch()
+                discrim_loss = self._discriminator.train(experience)
 
             step = self._rl_agent.train_step_counter.numpy()
             print('step = {0}: loss = {1}'.format(step, train_loss))
+            print('step = {0}: val_acc = {1}'.format(step, discrim_loss.history["val_accuracy"]))
 
-            #evaluate and print diagnostics if desired
-            # if epoch % eval_interval == 0:
-            #     reward = self._evaluate(self._eval_env, self._rl_agent.policy)
-            #     print("reward: {}".format(reward))
+
 

@@ -10,9 +10,9 @@ from tensorflow.keras.losses import mse, binary_crossentropy
 
 
 # hyperparameters
-intermediate_dim = 32
-batch_size = 128
-epochs = 4
+intermediate_dim = 256
+batch_size = 256
+epochs = 1
 
 
 class DIAYNDiscriminator():
@@ -40,7 +40,7 @@ class DIAYNDiscriminator():
         x, y = self._split_batch(batch)
         x = tf.reshape(x, [x.shape[0], -1])
         y = tf.reshape(y, [y.shape[0], -1])
-        history = self.model.fit(x, y, batch_size=256, epochs=epochs, validation_split=0.2)
+        history = self.model.fit(x, y, batch_size=256, epochs=epochs, validation_split=0.2, verbose=0)
         return history
 
     def _split_batch(self, batch):
