@@ -3,16 +3,13 @@ import tensorflow.keras as keras
 
 from tensorflow.keras.layers import Input, Dense
 from tensorflow.keras.models import Model
+from skill_discriminator import SkillDiscriminator
 
 
-# hyperparameters
-intermediate_dim = 128
-batch_size = 256
-
-
-class DIAYNDiscriminator:
+class DIAYNDiscriminator(SkillDiscriminator):
     def __init__(self,
                  num_skills,
+                 intermediate_dim,
                  input_shape=None,
                  load_from=None,
                  ):
@@ -35,16 +32,6 @@ class DIAYNDiscriminator:
 
         self.model.summary()
 
-    # batch is single time steps (because diayn discriminator encodes states...)
-    """
-    def train(self, batch):
-        # reformat batch for supervised training
-        x, y = self._split_batch(batch)
-        x = tf.reshape(x, [x.shape[0], -1])
-        y = tf.reshape(y, [y.shape[0], -1])
-        history = self.model.fit(x, y, batch_size=batch_size, validation_split=0.2, verbose=0)
-        return history
-    """
     def train(self, x, y):
         return self.model.fit(x, y, verbose=0)
 

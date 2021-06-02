@@ -13,8 +13,8 @@ from tf_agents.policies import policy_saver
 import tempfile
 
 import os
-import dads
-from dads import skill_dynamics
+import dads_agent
+from dads_agent import skill_dynamics
 import utils
 from env import point_environment
 
@@ -95,7 +95,7 @@ def run_experiment():
         batch_size=train_env.batch_size,
         max_length=replay_buffer_max_length)
 
-    skill_discovery = dads.DADS(
+    skill_discovery = dads_agent.DADS(
         train_env=train_env,
         eval_env=eval_env,
         rl_agent=tf_agent,

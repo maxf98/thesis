@@ -64,14 +64,10 @@ class SkillDynamics(SkillDiscriminator):
         epsilon = K.random_normal(shape=(batch, dim))
         return z_mean + K.exp(0.5 * z_log_var) * epsilon
 
-    def train(self, batch):
-        """ accept two step transitions (observations), observation concat with skill
-         --> split next_ts into (s', z') and train with x = (s, z) and y = s'-s """
+    def train(self, x, y):
+        """ x = (s, z) and y = s'-s """
         # batch.observation.shape = 128 x 2 x 4 => 2 obs, 2 skill
         # get initial observations (state, skill)
-        x = batch[:, 0, :]
-        # compute state delta
-        y = tf.subtract(batch[:, 1, :-self.latent_dim], batch[:, 0, :-self.latent_dim])
         history = self.model.fit(x, y, 128, verbose=0)
         return history
 

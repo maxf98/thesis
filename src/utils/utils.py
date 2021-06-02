@@ -22,14 +22,15 @@ def split_aug_obs(aug_obs, num_skills):
 
 
 def aug_obs_spec(obs_spec, num_skills):
-    return BoundedTensorSpec(shape=(obs_spec.shape[0] + num_skills,), dtype=obs_spec.dtype, name="augmented observation", minimum=obs_spec.minimum, maximum=obs_spec.maximum)
+    return BoundedTensorSpec(shape=(obs_spec.shape[0] + num_skills,), dtype=obs_spec.dtype,
+                             name="augmented observation", minimum=obs_spec.minimum, maximum=obs_spec.maximum)
 
 
 def aug_time_step_spec(time_step_spec: ts.TimeStep, num_skills):
     return ts.TimeStep(step_type=time_step_spec.step_type,
-                              reward=time_step_spec.reward,
-                              discount=time_step_spec.discount,
-                              observation=aug_obs_spec(time_step_spec.observation, num_skills))
+                       reward=time_step_spec.reward,
+                       discount=time_step_spec.discount,
+                       observation=aug_obs_spec(time_step_spec.observation, num_skills))
 
 
 def aug_time_step(time_step, z, num_skills):
@@ -46,7 +47,6 @@ def aug_time_step_cont(time_step: ts.TimeStep, z):
                        tf.concat([time_step.observation, tf.reshape(z, (1, 2))], -1))
 
 
-
 def skill_for_one_hot(v):
     return tf.argmax(v, axis=0)
 
@@ -58,7 +58,3 @@ def create_zip_file(dirname, base_filename):
 def unzip_to(zip_path, to):
     with zipfile.ZipFile(zip_path, 'r') as zip_ref:
         zip_ref.extractall(to)
-
-
-
-

@@ -4,8 +4,7 @@ from tf_agents.policies import tf_policy
 from tf_agents.trajectories import time_step as ts, policy_step
 from tf_agents.typing import types
 
-import utils
-
+from utils import utils
 
 # wrapper class for policy to fix skill
 class FixedOptionPolicy(tf_policy.TFPolicy):

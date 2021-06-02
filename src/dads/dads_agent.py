@@ -9,8 +9,9 @@ from tf_agents.replay_buffers.replay_buffer import ReplayBuffer
 from tf_agents.trajectories import trajectory
 
 import skill_discovery
-from dads import skill_dynamics
+import skill_dynamics
 from utils import logger
+from utils import utils
 
 batch_size = 128
 
@@ -65,7 +66,11 @@ class DADS(skill_discovery.SkillDiscovery):
         for i in range(steps):
             print("iteration {}".format(i + 1))
             train_batch, _ = next(self.train_batch_iterator)
-            self.skill_discriminator.train(train_batch.observation)
+            batch = train_batch.observation
+            x = batch[:, 0, :]
+            # compute state delta
+            y = tf.subtract(batch[:, 1, :-self.skill_discriminator.latent_dim], batch[:, 0, :-self.skill_discriminator.latent_dim])
+            self.skill_discriminator.train(x, y)
 
     def _train_agent(self, steps):
         print("Start SAC training")

@@ -1,5 +1,6 @@
 from abc import ABC, abstractmethod
 
+import gin
 from tf_agents.environments.tf_environment import TFEnvironment
 from tf_agents.agents.tf_agent import TFAgent
 from tf_agents.policies import tf_policy
@@ -8,14 +9,6 @@ from tf_agents.policies import random_tf_policy
 from tf_agents.trajectories import trajectory
 from skill_discriminator import SkillDiscriminator
 
-""" ADD ALL Skill Discovery SPECIFIC PARAMS HERE, """
-num_epochs = 50
-initial_collect_steps = 5000
-collect_steps_per_epoch = 1000  # turn into collect_episodes ?
-dynamics_train_steps_per_epoch = 32
-sac_train_steps_per_epoch = 32
-
-""" provide some demonstrative implementations of the abstract methods (?) """
 
 class SkillDiscovery(ABC):
     def __init__(self,
@@ -24,6 +17,7 @@ class SkillDiscovery(ABC):
                  skill_discriminator: SkillDiscriminator,
                  rl_agent: TFAgent,
                  replay_buffer: ReplayBuffer,
+                 logger,
                  max_skill_length,
                  ):
         self.train_env = train_env
@@ -32,11 +26,11 @@ class SkillDiscovery(ABC):
         self.skill_discriminator = skill_discriminator
         self.rl_agent = rl_agent
         self.replay_buffer = replay_buffer
+        self.logger = logger
 
     @abstractmethod
     def _collect_env(self, steps):
         pass
-
 
     @abstractmethod
     def _train_discriminator(self, steps):
@@ -50,7 +44,12 @@ class SkillDiscovery(ABC):
     def _log_epoch(self, epoch):
         pass
 
-    def train(self):
+    def train(self,
+              num_epochs,
+              initial_collect_steps,
+              collect_steps_per_epoch,  # turn into collect_episodes ?
+              dynamics_train_steps_per_epoch,
+              sac_train_steps_per_epoch):
         for epoch in range(1, num_epochs + 1):
             print("epoch {}".format(epoch))
             # collect transitions from environment -- EXPLORE
