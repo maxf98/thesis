@@ -1,6 +1,6 @@
 from abc import ABC, abstractmethod
 
-import gin
+import gtimer as gt
 from tf_agents.environments.tf_environment import TFEnvironment
 from tf_agents.agents.tf_agent import TFAgent
 from tf_agents.policies import tf_policy
@@ -14,7 +14,7 @@ class SkillDiscovery(ABC):
     def __init__(self,
                  train_env: TFEnvironment,
                  eval_env: TFEnvironment,
-                 skill_discriminator: SkillDiscriminator,
+                 skill_discriminator,
                  rl_agent: TFAgent,
                  replay_buffer: ReplayBuffer,
                  logger,
@@ -53,13 +53,23 @@ class SkillDiscovery(ABC):
         for epoch in range(1, num_epochs + 1):
             print("epoch {}".format(epoch))
             # collect transitions from environment -- EXPLORE
+            print("EXPLORE")
             self._collect_env(initial_collect_steps if epoch == 1 else collect_steps_per_epoch)
+            gt.stamp("exploration")
 
             # train skill_discriminator on transitions -- DISCOVER
+            print("DISCOVER")
             self._train_discriminator(dynamics_train_steps_per_epoch)
+            gt.stamp("discriminator training")
 
             # train rl_agent to optimize skills -- LEARN
+            print("LEARN")
             self._train_agent(sac_train_steps_per_epoch)
+            gt.stamp("sac training")
 
             # log losses, times, and possibly visualise
+            print("logging")
             self._log_epoch(epoch)
+            gt.stamp("logging")
+
+        #print(gt.report())

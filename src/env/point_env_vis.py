@@ -5,6 +5,7 @@ import tensorflow as tf
 from env import point_environment
 from tf_agents.environments import tf_py_environment
 from diayn import diayn_discriminator
+from edld import vae_discriminator
 
 
 def get_cmap(num_skills):
@@ -121,6 +122,36 @@ def heatmap(ax, discriminator: diayn_discriminator.DIAYNDiscriminator):
     config_subplot(ax, "Discriminator heatmap")
 
     return ax
+
+
+def latent_skill_vis(ax, decoder: tf.keras.models.Model):
+    # assumes skill space of [[-1, -1],[1, 1]]
+    dmin, dmax = -1, 1
+    points_per_axis = 3
+
+    skill_trajectories = []
+    for x in range(points_per_axis):
+        for y in range(points_per_axis):
+            skill = [2 * x / points_per_axis - 1, 2 * y / points_per_axis - 1]
+            trajectories = rollout_latent_skill(decoder, skill)
+            skill_trajectories.append(trajectories)
+
+    cmap = get_cmap(points_per_axis * points_per_axis)
+    plot_all_skills(ax, cmap, skill_trajectories, alpha=0.8)
+
+
+def rollout_latent_skill(decoder: tf.keras.models.Model, skill, num_rollouts=1, num_steps=10):
+    trajectories = []
+    for _ in range(num_rollouts):
+        traj = []
+        cur = [0.,0.]
+        traj.append(cur)
+        for _ in range(num_steps):
+            delta_s = decoder.call(tf.constant([skill]))
+            cur = cur[0] + delta_s[0][0], cur[1] + delta_s[0][1]
+            traj.append(cur)
+        trajectories.append(traj)
+    return trajectories
 
 
 def vis_saved_policy(ax):

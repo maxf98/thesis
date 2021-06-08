@@ -4,6 +4,7 @@ import io
 import shutil
 import zipfile
 from tf_agents.trajectories import time_step as ts
+from tf_agents.trajectories import trajectory
 from tensorflow.python.framework.tensor_spec import BoundedTensorSpec
 
 
@@ -45,6 +46,18 @@ def aug_time_step_cont(time_step: ts.TimeStep, z):
                        time_step.reward,
                        time_step.discount,
                        tf.concat([time_step.observation, tf.reshape(z, (1, 2))], -1))
+
+# there might be a default way to do this in tf_agents API...
+def concat_trajectory(t1: trajectory.Trajectory, t2: trajectory.Trajectory):
+    return trajectory.Trajectory(
+        step_type=tf.concat([t1.step_type, t2.step_type], axis=0),
+        observation=tf.concat([t1.observation, t2.observation], axis=0),
+        action=tf.concat([t1.action, t2.action], axis=0),
+        policy_info=(),
+        next_step_type=tf.concat([t1.next_step_type, t2.next_step_type], axis=0),
+        reward=tf.concat([t1.reward, t2.reward], axis=0),
+        discount=tf.concat([t1.discount, t2.discount], axis=0),
+    )
 
 
 def skill_for_one_hot(v):
