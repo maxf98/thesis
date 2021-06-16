@@ -1,5 +1,6 @@
 from abc import ABC, abstractmethod
 
+from tqdm import tqdm
 import gtimer as gt
 from tf_agents.environments.tf_environment import TFEnvironment
 from tf_agents.agents.tf_agent import TFAgent
@@ -33,15 +34,15 @@ class SkillDiscovery(ABC):
         pass
 
     @abstractmethod
-    def _train_discriminator(self, steps):
+    def _train_discriminator(self):
         pass
 
     @abstractmethod
-    def _train_agent(self, steps):
+    def _train_agent(self):
         pass
 
     @abstractmethod
-    def _log_epoch(self, epoch):
+    def _log_epoch(self, epoch, discrim_train_stats, sac_train_stats):
         pass
 
     def train(self,
@@ -55,21 +56,24 @@ class SkillDiscovery(ABC):
             # collect transitions from environment -- EXPLORE
             print("EXPLORE")
             self._collect_env(initial_collect_steps if epoch == 1 else collect_steps_per_epoch)
-            gt.stamp("exploration")
 
             # train skill_discriminator on transitions -- DISCOVER
             print("DISCOVER")
-            self._train_discriminator(dynamics_train_steps_per_epoch)
-            gt.stamp("discriminator training")
+            discrim_training_stats = {'losses': [], 'accuracy': []}
+            for _ in tqdm(range(dynamics_train_steps_per_epoch)):
+                l, a = self._train_discriminator()
+                discrim_training_stats['losses'].append(l)
+                discrim_training_stats['accuracy'].append(a)
 
             # train rl_agent to optimize skills -- LEARN
             print("LEARN")
-            self._train_agent(sac_train_steps_per_epoch)
-            gt.stamp("sac training")
+            sac_train_stats = {'losses': []}
+            for _ in tqdm(range(sac_train_steps_per_epoch)):
+                l = self._train_agent()
+                sac_train_stats['losses'].append(l)
 
             # log losses, times, and possibly visualise
             print("logging")
-            self._log_epoch(epoch)
-            gt.stamp("logging")
+            self._log_epoch(epoch, discrim_training_stats, sac_train_stats)
 
         #print(gt.report())

@@ -48,7 +48,7 @@ class PointEnv(py_environment.PyEnvironment):
 
     self._step_count += 1
 
-    if self._step_count > 25:
+    if self._step_count > 100:
       self._episode_ended = True
       return ts.termination(np.array(self._state, dtype=np.float32), reward=0)
     else:

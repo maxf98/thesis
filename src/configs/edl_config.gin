@@ -21,7 +21,7 @@ train_skill_discovery.dynamics_train_steps_per_epoch = 100
 train_skill_discovery.sac_train_steps_per_epoch = 1000
 
 # DISCRIMINATOR
-init_skill_discriminator.intermediate_dim = 64
+init_skill_discriminator.intermediate_dim = 128
 
 # LOGGING
 init_logging.log_dir = 'logs/edl'

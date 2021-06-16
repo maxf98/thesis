@@ -3,7 +3,9 @@ from tensorflow import keras
 import matplotlib.pyplot as plt
 import tensorflow_probability as tfp
 
+
 skill_prior = tfp.distributions.Uniform(low=[-1., -1.], high=[1., 1.])
+
 
 def load_encoder():
     log_dir = "logs/edl/07-06~20-37/discriminator/encoder"
@@ -15,6 +17,7 @@ def load_decoder():
     log_dir = "logs/edl/07-06~23-03/discriminator/decoder"
     decoder = keras.models.load_model(log_dir)
     return decoder
+
 
 def discriminator_vis():
     decoder = load_decoder()
@@ -40,6 +43,9 @@ def reconstruction():
     ap = decoder.call(z)
     print(a, ap)
 
+
+def test_vae_mnist():
+    pass
 
 if __name__ == "__main__":
     discriminator_vis()

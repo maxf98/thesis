@@ -8,7 +8,6 @@ from tf_agents.trajectories import trajectory
 
 from diayn.diayn_discriminator import DIAYNDiscriminator
 from skill_discovery import SkillDiscovery
-from utils import logger
 from utils import utils
 
 initial_collect_steps = 1000

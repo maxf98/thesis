@@ -1,6 +1,5 @@
 import os
 from datetime import datetime
-from env import point_env_vis
 import matplotlib.pyplot as plt
 from tf_agents.policies import policy_saver
 

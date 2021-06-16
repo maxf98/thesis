@@ -11,7 +11,6 @@ from tf_agents.trajectories import trajectory
 
 from edld.vae_discriminator import VAEDiscriminator
 from skill_discovery import SkillDiscovery
-from utils import logger
 from utils import utils
 import matplotlib.pyplot as plt
 from env import point_env_vis
@@ -177,13 +176,11 @@ class EDLAgent(SkillDiscovery):
 
         return sac_losses
 
-
     def _log_epoch(self, epoch):
-
         fig, (ax1, ax2) = plt.subplots(1, 2)
         plt.figure(figsize=(7, 14))
         fig.suptitle("Epoch {}".format(epoch))
         point_env_vis.cont_skill_vis(ax1, self.rl_agent.policy, self.eval_env, 10)
-        point_env_vis.latent_skill_vis(ax2, self.skill_discriminator)
+        point_env_vis.latent_skill_vis(ax2, self.skill_discriminator.decoder)
 
         self.logger.log(epoch, fig)

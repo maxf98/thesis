@@ -1,5 +1,6 @@
 import gin
 import tensorflow as tf
+import tensorflow_probability as tfp
 # from tf_agents.environments import suite_pybullet
 from tf_agents.environments import tf_py_environment
 from tf_agents.utils import common
@@ -11,46 +12,45 @@ from tf_agents.agents.sac import tanh_normal_projection_network
 from tf_agents.train.utils import spec_utils
 from tf_agents.train.utils import train_utils
 
-from diayn import diayn_agent
-from diayn import diayn_discriminator
-from edld import edl_agent
-from edld import vae_discriminator
-from utils import utils
-from utils import logger
+from core.diayn import diayn
+from core import logger
+from core import utils
 from env import point_environment
 
 env_name = "LunarLanderContinuous-v2"  # @param {type:"string"}
 
 
 @gin.configurable
-def run_experiment(latent_dim=2):
+def run_experiment(num_skills=4):
     # train_env = tf_py_environment.TFPyEnvironment(suite_pybullet.load(env_name))
     # eval_env = tf_py_environment.TFPyEnvironment(suite_pybullet.load(env_name))
     train_env = tf_py_environment.TFPyEnvironment(point_environment.PointEnv())
     eval_env = tf_py_environment.TFPyEnvironment(point_environment.PointEnv())
 
     obs_spec, action_spec, time_step_spec = (spec_utils.get_tensor_specs(train_env))
-    aug_obs_spec = utils.aug_obs_spec(obs_spec, latent_dim)
-    aug_ts_spec = utils.aug_time_step_spec(time_step_spec, latent_dim)
+    obs_dim = obs_spec.shape.as_list()[0]
+    aug_obs_spec = utils.aug_obs_spec(obs_spec, obs_dim + num_skills)
+    aug_ts_spec = utils.aug_time_step_spec(time_step_spec, obs_dim + num_skills)
 
     tf_agent = init_sac_agent(obs_spec=aug_obs_spec, action_spec=action_spec, ts_spec=aug_ts_spec)
 
-    # 2 ==> obs_spec.shape (currently returns tensor shape [2])
-    skill_discriminator = init_skill_discriminator(type=type, input_dim=2, latent_dim=latent_dim)
+    skill_discriminator = init_skill_discriminator(input_dim=obs_dim, latent_dim=num_skills)
 
-    replay_buffer = init_buffer(tf_agent.collect_data_spec, train_env.batch_size)
+    data_spec = tf_agent.collect_data_spec
+    data_spec = data_spec.replace(observation=utils.aug_obs_spec(obs_spec, obs_dim + num_skills))
+    replay_buffer = init_buffer(data_spec, train_env.batch_size)
 
     logging = init_logging()
 
-    skill_discovery = init_skill_discovery(type=type, train_env=train_env, eval_env=eval_env, agent=tf_agent,
-                                           discriminator=skill_discriminator, buffer=replay_buffer, logger=logging,
-                                           latent_dim=latent_dim)
+    skill_discovery = init_skill_discovery(train_env=train_env, eval_env=eval_env, agent=tf_agent,
+                                           skill_discriminator=skill_discriminator, buffer=replay_buffer,
+                                           logs=logging, latent_dim=num_skills)
 
     train_skill_discovery(skill_discovery)
 
 
 @gin.configurable
-def init_buffer(data_spec, batch_size, buffer_size=10000):
+def init_buffer(data_spec, batch_size, buffer_size=2000):
     return tf_uniform_replay_buffer.TFUniformReplayBuffer(
         data_spec=data_spec,
         batch_size=batch_size,
@@ -58,31 +58,13 @@ def init_buffer(data_spec, batch_size, buffer_size=10000):
 
 
 @gin.configurable
-def init_skill_discriminator(type, input_dim, intermediate_dim, latent_dim):
-    if type == "DIAYN":
-        discriminator = diayn_discriminator.DIAYNDiscriminator(latent_dim, intermediate_dim, input_dim)
-        return discriminator
-    elif type == "EDL":
-        discriminator = vae_discriminator.VAEDiscriminator(input_dim, intermediate_dim, latent_dim)
-        return discriminator
+def init_skill_discriminator(input_dim, intermediate_dim, latent_dim):
+    return diayn.DIAYNDiscriminator(input_dim, intermediate_dim, latent_dim)
 
 
-@gin.configurable
-def init_skill_discovery(type, train_env, eval_env, agent, discriminator, buffer, logger, latent_dim):
-    if type == "DIAYN":
-        skill_discovery = diayn_agent.DIAYNAgent(
-            train_env=train_env,
-            eval_env=eval_env,
-            rl_agent=agent,
-            skill_discriminator=discriminator,
-            replay_buffer=buffer,
-            logger=logger,
-            num_skills=latent_dim
-        )
-        return skill_discovery
-    elif type == "EDL":
-        skill_discovery = edl_agent.EDLAgent(train_env, eval_env, discriminator, agent, buffer, logger, latent_dim)
-        return skill_discovery
+def init_skill_discovery(train_env, eval_env, agent, skill_discriminator, buffer, logs, latent_dim):
+    return diayn.DIAYNAgent(train_env=train_env, eval_env=eval_env, skill_discriminator=skill_discriminator,
+                            rl_agent=agent, replay_buffer=buffer, logger=logs, num_skills=latent_dim, max_skill_length=8)
 
 
 @gin.configurable
@@ -154,5 +136,5 @@ def init_sac_agent(obs_spec,
 
 
 if __name__ == '__main__':
-    gin.parse_config_file("configs/config.gin")
+    gin.parse_config_file("../../configs/diayn_config.gin")
     run_experiment()
