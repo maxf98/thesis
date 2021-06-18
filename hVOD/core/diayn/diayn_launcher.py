@@ -10,6 +10,7 @@ from tf_agents.agents.ddpg import critic_network
 from tf_agents.networks import actor_distribution_network
 from tf_agents.agents.sac import tanh_normal_projection_network
 from tf_agents.train.utils import spec_utils
+from tf_agents.train.utils import strategy_utils
 from tf_agents.train.utils import train_utils
 
 from core.diayn import diayn
@@ -22,6 +23,9 @@ env_name = "LunarLanderContinuous-v2"  # @param {type:"string"}
 
 @gin.configurable
 def run_experiment(num_skills=4):
+    # not sure if I need to use this to enable GPU... it runs quickly enough for now I think...
+    # strategy = strategy_utils.get_strategy(tpu=False, use_gpu=True)
+
     # train_env = tf_py_environment.TFPyEnvironment(suite_pybullet.load(env_name))
     # eval_env = tf_py_environment.TFPyEnvironment(suite_pybullet.load(env_name))
     train_env = tf_py_environment.TFPyEnvironment(point_environment.PointEnv())
@@ -34,7 +38,8 @@ def run_experiment(num_skills=4):
 
     tf_agent = init_sac_agent(obs_spec=aug_obs_spec, action_spec=action_spec, ts_spec=aug_ts_spec)
 
-    skill_discriminator = init_skill_discriminator(input_dim=obs_dim, latent_dim=num_skills)
+    skill_discriminator = diayn.OracleDiscriminator((), (), 4)
+    # skill_discriminator = init_skill_discriminator(input_dim=obs_dim, latent_dim=num_skills)
 
     data_spec = tf_agent.collect_data_spec
     data_spec = data_spec.replace(observation=utils.aug_obs_spec(obs_spec, obs_dim + num_skills))
@@ -58,8 +63,8 @@ def init_buffer(data_spec, batch_size, buffer_size=2000):
 
 
 @gin.configurable
-def init_skill_discriminator(input_dim, intermediate_dim, latent_dim):
-    return diayn.DIAYNDiscriminator(input_dim, intermediate_dim, latent_dim)
+def init_skill_discriminator(input_dim, intermediate_dim, latent_dim, load_from=None):
+    return diayn.DIAYNDiscriminator(input_dim, intermediate_dim, latent_dim, load_from=load_from)
 
 
 def init_skill_discovery(train_env, eval_env, agent, skill_discriminator, buffer, logs, latent_dim):

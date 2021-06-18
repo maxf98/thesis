@@ -1,6 +1,7 @@
 import tensorflow as tf
 import tensorflow_probability as tfp
 import tensorflow.keras as keras
+import numpy as np
 
 from tf_agents.environments.tf_environment import TFEnvironment
 from tf_agents.agents.tf_agent import TFAgent
@@ -13,6 +14,7 @@ from tensorflow.keras.models import Model
 from skill_discovery import SkillDiscovery
 from core import utils
 from tqdm import tqdm
+import math
 
 
 class DIAYNAgent(SkillDiscovery):
@@ -42,6 +44,8 @@ class DIAYNAgent(SkillDiscovery):
 
         self.num_skills = num_skills
         self._skill_prior = tfp.distributions.Categorical(probs=[1 / num_skills for _ in range(num_skills)])
+
+        self.exploration_rollouts = []
 
     def _rl_training_batch(self):
         experience, _ = next(self._train_batch_iterator)
@@ -91,6 +95,8 @@ class DIAYNAgent(SkillDiscovery):
             next_time_step = self.train_env.step(action_step.action)
             aug_next_time_step = utils.aug_time_step(next_time_step, z_one_hot)
 
+            self.exploration_rollouts.append(time_step.observation.numpy().flatten())
+
             traj = trajectory.from_transition(aug_time_step, action_step, aug_next_time_step)
             self.replay_buffer.add_batch(traj)
 
@@ -114,10 +120,8 @@ class DIAYNAgent(SkillDiscovery):
 
     def _log_epoch(self, epoch, discrim_stats, sac_stats):
         # find other ways of inspecting the discriminator => e.g. sampling skills and evaluating outputs
-        self.logger.log(epoch, self.rl_agent.policy, self.skill_discriminator, self.eval_env, self.num_skills, discrim_stats, sac_stats)
-
-        if epoch == 100:
-            self.logger.close(self.rl_agent.policy, self.skill_discriminator)
+        self.logger.log(epoch, self.rl_agent.policy, self.skill_discriminator, self.eval_env, self.num_skills, discrim_stats, sac_stats, self.exploration_rollouts)
+        self.exploration_rollouts = []
 
 
 class DIAYNDiscriminator:
@@ -160,3 +164,51 @@ class DIAYNDiscriminator:
 
     def save(self, save_to):
         self.model.save(save_to)
+
+
+class OracleDiscriminator:
+    def __init__(self, input_shape, intermediate_dim, num_skills, load_from=None):
+        # params immediately discarded, only to make interchangeable with DIAYNDiscrim
+        self.num_skills = num_skills  # for now we assume it's 4
+
+    def train(self, x, y):
+        pass
+
+    def _prob(self, point):
+        x, y = point
+        msp = 0.001
+
+        if math.fabs(x) < msp and math.fabs(y) < msp:
+            return np.array([0.25, 0.25, 0.25, 0.25])
+
+        if x >= 0:
+            if y >= 0:
+                return np.array([y / (x + y), x / (x + y), msp, msp])
+            else:
+                return np.array([msp, x / (x - y), -y / (x - y), msp])
+        else:
+            if y >= 0:
+                return np.array([y / (y - x), msp, msp, -x / (y - x)])
+            else:
+                return np.array([msp, msp, y / (x + y), x / (x + y)])
+
+    def _simple_prob(self, point):
+        x, y = point
+        msp = 0.001
+        return np.array([1-msp if x>=0 and y>=0 else msp,
+                         1-msp if x>=0 and y<0 else msp,
+                         1-msp if x<0 and y<0 else msp,
+                         1-msp if x<0 and y>=0 else msp])
+
+    def call(self, batch):
+        """
+        Parameters
+        ----------
+        batch – batch expected as batch_size * 2
+
+        Returns
+        prob of each skill for each data_point in batch_size * 4
+        """
+        probs = tf.map_fn(self._simple_prob, batch)
+
+        return probs

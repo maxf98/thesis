@@ -2,6 +2,7 @@ import os
 from datetime import datetime
 import matplotlib.pyplot as plt
 from tf_agents.policies import policy_saver
+from tf_agents.policies import random_tf_policy
 from env import point_env_vis
 import numpy as np
 
@@ -25,14 +26,27 @@ class Logger:
         os.mkdir(self.vis_dir)
         self.create_fig_interval = create_fig_interval
 
-    def log(self, epoch, policy, discriminator, env, num_skills, discrim_stats, sac_stats):
+    def log(self, epoch, policy, discriminator, env, num_skills, discrim_stats, sac_stats, exploration_rollouts):
         self.discriminator_stats['losses'].append(discrim_stats['losses'])
         self.discriminator_stats['accuracy'].append(discrim_stats['accuracy'])
         self.sac_stats['losses'].append(sac_stats['losses'])
 
         if epoch % self.create_fig_interval == 0:
+            fig, ((ax1, ax2), (ax5, ax6)) = plt.subplots(2, 2)  # (removed discrim grpahs for now
+            self.discrete_skill_vis(ax1, ax2, policy, discriminator, env, num_skills)
+            dl = np.array(self.discriminator_stats["losses"]).flatten(),
+            da = np.array(self.discriminator_stats["accuracy"]).flatten(),
+            sl = np.array(self.sac_stats["losses"]).flatten()
+            # ax3.plot(range(len(da)), da, color='lightblue', linewidth=3)
+            # ax3.set(title='Discriminator accuracy')
+            # ax4.plot(range(len(dl)), dl, color='red', linewidth=3)
+            # ax4.set(title='Discriminator training loss')
+            ax5.plot(range(len(sl)), sl, color='green', linewidth=3)
+            ax5.set(title='SAC training loss')
+            xs, ys = [p[0] for p in exploration_rollouts], [p[1] for p in exploration_rollouts]  # quicker way?
+            ax6.scatter(xs, ys, marker='.')
+            ax6.set(title='Exploration map', xlim=[-1, 1], ylim=[-1, 1])
             save_path = os.path.join(self.vis_dir, "epoch_{}".format(epoch))
-            fig = self.discrete_skill_vis(policy, discriminator, env, num_skills)
             fig.savefig(save_path)
             plt.close(fig)
 
@@ -41,31 +55,18 @@ class Logger:
         self.save_discrim(discriminator)
         self.save_policy(policy)
 
-        fig, (ax1, ax2, ax3) = plt.subplots(nrows=3)
-        da = np.array(self.discriminator_stats['accuracy']).flatten()
-        dl = np.array(self.discriminator_stats['losses']).flatten()
-        sl = np.array(self.sac_stats['losses']).flatten()
-        ax1.plot(range(len(da)), da, color='lightblue', linewidth=3)
-        ax1.set(title='Discriminator accuracy')
-        ax2.plot(range(len(dl)), dl, color='red', linewidth=3)
-        ax2.set(title='Discriminator training loss')
-        ax3.plot(range(len(sl)), sl, color='green', linewidth=3)
-        ax3.set(title='SAC training loss')
-
-        fig.savefig(os.path.join(self.log_dir, "losses and accuracy"))
+    @staticmethod
+    def exploration_scatter_plot(ax, xs, ys):
+        ax.scatter(xs, ys, marker='.')
 
     @staticmethod
-    def sample_policy_rollouts(policy, env, path_length):
-        fig, ax = plt.subplots()
+    def sample_policy_rollouts(ax, policy, env, path_length):
         point_env_vis.cont_skill_vis(ax, policy, env, path_length)
-        return fig
 
     @staticmethod
-    def discrete_skill_vis(policy, discriminator, env, num_skills):
-        fig, (ax1, ax2) = plt.subplots(1, 2)
+    def discrete_skill_vis(ax1, ax2, policy, discriminator, env, num_skills):
         point_env_vis.skill_vis(ax1, policy, num_skills, env, 5)
         point_env_vis.heatmap(ax2, discriminator)
-        return fig
 
     def save_discrim(self, discriminator):
         discriminator.save(os.path.join(self.log_dir, "discriminator"))

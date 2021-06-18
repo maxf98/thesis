@@ -5,6 +5,7 @@ import tensorflow as tf
 from env import point_environment
 from tf_agents.environments import tf_py_environment
 from core.diayn.diayn import DIAYNDiscriminator
+from core.diayn.diayn import OracleDiscriminator
 
 
 def get_cmap(num_skills):
@@ -108,7 +109,7 @@ def plot_all_skills(ax, cmap, trajectories, alpha=0.2, linewidth=2):
     return ax
 
 
-def heatmap(ax, discriminator: DIAYNDiscriminator):
+def heatmap(ax, discriminator):
     P = 50
     points = tf.constant([[i/P, j/P] for i in range(-P, P, 1) for j in range(-P, P, 1)])
     pred = discriminator.call(points)
@@ -146,13 +147,15 @@ def vis_saved_policy(ax):
 
 
 def vis_saved_discrim(ax):
-    discriminator = diayn_discriminator.DIAYNDiscriminator(4, load_from="logs/discriminator")
+    discriminator = DIAYNDiscriminator(4, load_from="logs/discriminator")
     heatmap(ax, discriminator)
 
 
-if __name__ == '__main__':
-    fig, (ax1, ax2) = plt.subplots(1, 2)
-    fig.suptitle("Saved policy/discrim")
-    vis_saved_policy(ax1)
-    vis_saved_discrim(ax2)
+def vis_oracle_discrim():
+    fig, ax = plt.subplots()
+    heatmap(ax, OracleDiscriminator((), (), 4))
     plt.show()
+
+
+if __name__ == '__main__':
+    vis_oracle_discrim()
