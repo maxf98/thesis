@@ -69,7 +69,7 @@ def init_skill_discriminator(input_dim, intermediate_dim, latent_dim):
 
 def init_skill_discovery(train_env, eval_env, agent, skill_discriminator, buffer, gsdlogger, skill_prior, latent_dim):
     return gsd.GoalConditionedSkillDiscovery(train_env, eval_env, skill_discriminator, agent, buffer, gsdlogger,
-                                             skill_prior, latent_dim, max_skill_length=8)
+                                             skill_prior, latent_dim, max_skill_length=30)
 
 
 @gin.configurable

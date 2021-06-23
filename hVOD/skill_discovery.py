@@ -52,13 +52,13 @@ class SkillDiscovery(ABC):
               dynamics_train_steps_per_epoch,
               sac_train_steps_per_epoch):
         for epoch in range(1, num_epochs + 1):
-            print("epoch {}".format(epoch))
+            tqdm.write(f"epoch {epoch}\n")
             # collect transitions from environment -- EXPLORE
-            print("EXPLORE")
+            tqdm.write("EXPLORE")
             self._collect_env(initial_collect_steps if epoch == 1 else collect_steps_per_epoch)
 
             # train skill_discriminator on transitions -- DISCOVER
-            print("DISCOVER")
+            tqdm.write("DISCOVER")
             discrim_training_stats = {'losses': [], 'accuracy': []}
             for _ in tqdm(range(dynamics_train_steps_per_epoch)):
                 l, a = self._train_discriminator()
@@ -66,14 +66,14 @@ class SkillDiscovery(ABC):
                 discrim_training_stats['accuracy'].append(a)
 
             # train rl_agent to optimize skills -- LEARN
-            print("LEARN")
+            tqdm.write("LEARN")
             sac_train_stats = {'losses': []}
             for _ in tqdm(range(sac_train_steps_per_epoch)):
                 l = self._train_agent()
                 sac_train_stats['losses'].append(l)
 
             # log losses, times, and possibly visualise
-            print("logging")
+            tqdm.write("logging")
             self._log_epoch(epoch, discrim_training_stats, sac_train_stats)
 
         #print(gt.report())

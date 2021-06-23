@@ -39,6 +39,8 @@ class GoalConditionedSkillDiscovery(SkillDiscovery):
         self._skill_prior = skill_prior
         self._use_state_delta = use_state_delta
 
+        self.exploration_rollouts = []
+
     def _rl_training_batch(self):
         experience, _ = next(self._train_batch_iterator)
         return self._relabel_ir(experience)
@@ -71,6 +73,7 @@ class GoalConditionedSkillDiscovery(SkillDiscovery):
 
                 time_step = self.train_env.reset()  # for now, skills radiate out from start!
 
+            self.exploration_rollouts.append(time_step.observation.numpy().flatten())
             aug_time_step = utils.aug_time_step(time_step, tf.reshape(z, [1, -1]))
             action_step = self.rl_agent.collect_policy.action(aug_time_step)
             next_time_step = self.train_env.step(action_step.action)
@@ -84,7 +87,8 @@ class GoalConditionedSkillDiscovery(SkillDiscovery):
         batch = self._discriminator_training_batch()
         x = batch.observation[:, 0, :-self.latent_dim]
         y = batch.observation[:, 0, -self.latent_dim:]
-        self.skill_discriminator.train(x, y)
+        discrim_history = self.skill_discriminator.train(x, y)
+        return discrim_history.history['loss'], discrim_history.history['z_mean_accuracy']
 
     def _relabel_ir(self, batch):
         # relabel with intrinsic reward and perform data augmentation
@@ -115,14 +119,12 @@ class GoalConditionedSkillDiscovery(SkillDiscovery):
         experience = self._rl_training_batch()
         sac_loss = self.rl_agent.train(experience)
 
-        step = self.rl_agent.train_step_counter.numpy()
-        # print('step = {0}: sac training loss = {1}'.format(step, sac_loss))
+        return sac_loss.loss.numpy()
 
-    def _log_epoch(self, epoch):
+    def _log_epoch(self, epoch, discrim_stats, sac_stats):
         """
         log sac and discriminator losses and create a figure sampling rollouts of current skill-conditioned policy in environment
         """
-        fig = self.logger.sample_policy_rollouts(self.rl_agent.policy, self.train_env, self.max_skill_length)
-        self.logger.log(epoch, fig)
-
-        pass
+        self.logger.log(epoch, self.rl_agent.policy, self.skill_discriminator, self.eval_env, self.latent_dim,
+                        discrim_stats, sac_stats, self.exploration_rollouts)
+        self.exploration_rollouts = []

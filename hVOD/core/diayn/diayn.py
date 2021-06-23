@@ -178,27 +178,32 @@ class OracleDiscriminator:
         x, y = point
         msp = 0.001
 
-        if math.fabs(x) < msp and math.fabs(y) < msp:
-            return np.array([0.25, 0.25, 0.25, 0.25])
-
         if x >= 0:
             if y >= 0:
-                return np.array([y / (x + y), x / (x + y), msp, msp])
+                ret = [y / (x + y), x / (x + y), msp, msp]
             else:
-                return np.array([msp, x / (x - y), -y / (x - y), msp])
+                ret = [msp, x / (x - y), -y / (x - y), msp]
         else:
             if y >= 0:
-                return np.array([y / (y - x), msp, msp, -x / (y - x)])
+                ret = [y / (y - x), msp, msp, -x / (y - x)]
             else:
-                return np.array([msp, msp, y / (x + y), x / (x + y)])
+                ret = [msp, msp, y / (x + y), x / (x + y)]
+
+        if math.fabs(x) < msp and math.fabs(y) < msp:
+            ret = [0.25, 0.25, 0.25, 0.25]
+
+        dist_scaling_factor = 1 + (x**2 + y **2)
+
+        return ret * dist_scaling_factor
 
     def _simple_prob(self, point):
         x, y = point
         msp = 0.001
-        return np.array([1-msp if x>=0 and y>=0 else msp,
+        return (1 + 10 *(x**2 + y **2)) * np.array([1-msp if x>=0 and y>=0 else msp,
                          1-msp if x>=0 and y<0 else msp,
                          1-msp if x<0 and y<0 else msp,
                          1-msp if x<0 and y>=0 else msp])
+
 
     def call(self, batch):
         """

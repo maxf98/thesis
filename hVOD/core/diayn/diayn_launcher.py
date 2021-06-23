@@ -38,8 +38,8 @@ def run_experiment(num_skills=4):
 
     tf_agent = init_sac_agent(obs_spec=aug_obs_spec, action_spec=action_spec, ts_spec=aug_ts_spec)
 
-    skill_discriminator = diayn.OracleDiscriminator((), (), 4)
-    # skill_discriminator = init_skill_discriminator(input_dim=obs_dim, latent_dim=num_skills)
+    # skill_discriminator = diayn.OracleDiscriminator((), (), 4)
+    skill_discriminator = init_skill_discriminator(input_dim=obs_dim, latent_dim=num_skills)
 
     data_spec = tf_agent.collect_data_spec
     data_spec = data_spec.replace(observation=utils.aug_obs_spec(obs_spec, obs_dim + num_skills))
