@@ -1,14 +1,10 @@
 from abc import ABC, abstractmethod
 
 from tqdm import tqdm
-import gtimer as gt
+import time
 from tf_agents.environments.tf_environment import TFEnvironment
 from tf_agents.agents.tf_agent import TFAgent
-from tf_agents.policies import tf_policy
 from tf_agents.replay_buffers.replay_buffer import ReplayBuffer
-from tf_agents.policies import random_tf_policy
-from tf_agents.trajectories import trajectory
-from skill_discriminator import SkillDiscriminator
 
 
 class SkillDiscovery(ABC):
@@ -52,12 +48,13 @@ class SkillDiscovery(ABC):
               dynamics_train_steps_per_epoch,
               sac_train_steps_per_epoch):
         for epoch in range(1, num_epochs + 1):
-            tqdm.write(f"epoch {epoch}\n")
+            tqdm.write(f"\nepoch {epoch}")
             # collect transitions from environment -- EXPLORE
             tqdm.write("EXPLORE")
             self._collect_env(initial_collect_steps if epoch == 1 else collect_steps_per_epoch)
 
             # train skill_discriminator on transitions -- DISCOVER
+            time.sleep(0.5)
             tqdm.write("DISCOVER")
             discrim_training_stats = {'losses': [], 'accuracy': []}
             for _ in tqdm(range(dynamics_train_steps_per_epoch)):
@@ -66,6 +63,7 @@ class SkillDiscovery(ABC):
                 discrim_training_stats['accuracy'].append(a)
 
             # train rl_agent to optimize skills -- LEARN
+            time.sleep(0.5)
             tqdm.write("LEARN")
             sac_train_stats = {'losses': []}
             for _ in tqdm(range(sac_train_steps_per_epoch)):
@@ -73,6 +71,7 @@ class SkillDiscovery(ABC):
                 sac_train_stats['losses'].append(l)
 
             # log losses, times, and possibly visualise
+            time.sleep(0.5)
             tqdm.write("logging")
             self._log_epoch(epoch, discrim_training_stats, sac_train_stats)
 

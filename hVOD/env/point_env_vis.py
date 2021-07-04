@@ -77,7 +77,7 @@ def cont_skill_vis(ax, policy, env, num_steps):
     plot_all_skills(ax, cmap, skill_trajectories, alpha=0.8)
 
 
-def rollout_skill(skill_policy, env, num_rollouts, num_steps = 30):
+def rollout_skill(skill_policy, env, num_rollouts, num_steps = 50):
     trajectories = []
     for _ in range(num_rollouts):
         traj = []

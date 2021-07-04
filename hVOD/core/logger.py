@@ -2,7 +2,6 @@ import os
 from datetime import datetime
 import matplotlib.pyplot as plt
 from tf_agents.policies import policy_saver
-from tf_agents.policies import random_tf_policy
 from env import point_env_vis
 import numpy as np
 import shutil
@@ -31,9 +30,9 @@ class Logger:
         self.sac_stats['losses'].append(sac_stats['losses'])
 
         if epoch % self.create_fig_interval == 0:
-            fig, ((ax1, ax2),(ax3, ax4), (ax5, ax6)) = plt.subplots(3, 2)  # (removed discrim grpahs for now
-            # self.discrete_skill_vis(ax1, ax2, policy, discriminator, env, num_skills)
-            self.sample_policy_rollouts(ax1, policy, env, 30)
+            fig, ((ax1, ax2),(ax3, ax4), (ax5, ax6)) = plt.subplots(3, 2)
+            self.discrete_skill_vis(ax1, ax2, policy, discriminator, env, num_skills)
+            # self.sample_policy_rollouts(ax1, policy, env, 70)
             dl = np.array(self.discriminator_stats["losses"]).flatten()
             da = np.array(self.discriminator_stats["accuracy"]).flatten()
             sl = np.array(self.sac_stats["losses"]).flatten()
@@ -43,8 +42,8 @@ class Logger:
             ax4.set(title='Discriminator training loss')
             ax5.plot(range(len(sl)), sl, color='green', linewidth=3)
             ax5.set(title='SAC training loss')
-            xs, ys = [p[0] for p in exploration_rollouts], [p[1] for p in exploration_rollouts]  # quicker way?
-            ax6.scatter(xs, ys, marker='.')
+            xs, ys = [p[0] for p in exploration_rollouts], [p[1] for p in exploration_rollouts]
+            ax6.scatter(xs, ys, marker='.', alpha=0.2)
             ax6.set(title='Exploration map', xlim=[-1, 1], ylim=[-1, 1])
             save_path = os.path.join(self.vis_dir, "epoch_{}".format(epoch))
             fig.savefig(save_path)
@@ -57,12 +56,8 @@ class Logger:
 
     def copy_config_file(self):
         # uses relative path, not sure if that might cause some difficulties
-        # shutil.copy(os.path.abspath("../../configs/diayn_config.gin"), self.log_dir)
-        shutil.copy(os.path.abspath("configs/config.gin"), self.log_dir)
-
-    @staticmethod
-    def exploration_scatter_plot(ax, xs, ys):
-        ax.scatter(xs, ys, marker='.', s=1)
+        shutil.copy(os.path.abspath("../../configs/diayn_config.gin"), self.log_dir)
+        # shutil.copy(os.path.abspath("configs/config.gin"), self.log_dir)
 
     @staticmethod
     def sample_policy_rollouts(ax, policy, env, path_length):

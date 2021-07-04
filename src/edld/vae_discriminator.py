@@ -6,9 +6,6 @@ from tensorflow.keras.layers import Lambda, Input, Dense
 from tensorflow.keras.models import Model
 from tensorflow.keras.losses import mse, binary_crossentropy
 from tensorflow.keras import backend as K
-
-import numpy as np
-import tensorflow as tf
 import tensorflow_probability as tfp
 import matplotlib.pyplot as plt
 import argparse

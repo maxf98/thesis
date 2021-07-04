@@ -8,13 +8,16 @@ from tf_agents.agents.tf_agent import TFAgent
 from tf_agents.replay_buffers.replay_buffer import ReplayBuffer
 from tf_agents.trajectories import trajectory
 
-from tensorflow.keras.layers import Input, Dense
+from tensorflow.keras.layers import Lambda, Input, Dense
 from tensorflow.keras.models import Model
+from tensorflow.keras.losses import mse
+from tensorflow.keras import backend as K
 
 from skill_discovery import SkillDiscovery
 from core import utils
 from tqdm import tqdm
 import math
+import os
 
 
 class DIAYNAgent(SkillDiscovery):
@@ -109,7 +112,9 @@ class DIAYNAgent(SkillDiscovery):
         # delta_o = tf.subtract(t2, t1)
         z = experience.observation[:, 0, -self.num_skills:]
         discrim_history = self.skill_discriminator.train(t1, z)
+
         return discrim_history.history['loss'], discrim_history.history['accuracy']
+        # return None, None
 
     def _train_agent(self):
         experience = self._rl_training_batch()

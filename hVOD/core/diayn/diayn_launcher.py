@@ -66,10 +66,10 @@ def init_buffer(data_spec, batch_size, buffer_size=2000):
 def init_skill_discriminator(input_dim, intermediate_dim, latent_dim, load_from=None):
     return diayn.DIAYNDiscriminator(input_dim, intermediate_dim, latent_dim, load_from=load_from)
 
-
-def init_skill_discovery(train_env, eval_env, agent, skill_discriminator, buffer, logs, latent_dim):
+@gin.configurable
+def init_skill_discovery(train_env, eval_env, agent, skill_discriminator, buffer, logs, latent_dim, max_skill_length=100):
     return diayn.DIAYNAgent(train_env=train_env, eval_env=eval_env, skill_discriminator=skill_discriminator,
-                            rl_agent=agent, replay_buffer=buffer, logger=logs, num_skills=latent_dim, max_skill_length=8)
+                            rl_agent=agent, replay_buffer=buffer, logger=logs, num_skills=latent_dim, max_skill_length=max_skill_length)
 
 
 @gin.configurable

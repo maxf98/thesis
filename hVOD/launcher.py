@@ -55,7 +55,7 @@ def run_experiment(latent_dim=4):
 
 
 @gin.configurable
-def init_buffer(data_spec, batch_size, buffer_size=2000):
+def init_buffer(data_spec, batch_size, buffer_size):
     return tf_uniform_replay_buffer.TFUniformReplayBuffer(
         data_spec=data_spec,
         batch_size=batch_size,
@@ -66,10 +66,10 @@ def init_buffer(data_spec, batch_size, buffer_size=2000):
 def init_skill_discriminator(input_dim, intermediate_dim, latent_dim):
     return discriminator.Discriminator(input_dim, intermediate_dim, latent_dim)
 
-
-def init_skill_discovery(train_env, eval_env, agent, skill_discriminator, buffer, gsdlogger, skill_prior, latent_dim):
+@gin.configurable
+def init_skill_discovery(train_env, eval_env, agent, skill_discriminator, buffer, gsdlogger, skill_prior, latent_dim, max_skill_length):
     return gsd.GoalConditionedSkillDiscovery(train_env, eval_env, skill_discriminator, agent, buffer, gsdlogger,
-                                             skill_prior, latent_dim, max_skill_length=30)
+                                             skill_prior, latent_dim, max_skill_length)
 
 
 @gin.configurable
@@ -79,11 +79,11 @@ def init_logging(log_dir, create_fig_interval):
 
 @gin.configurable
 def train_skill_discovery(skill_discovery,
-                          num_epochs=50,
-                          initial_collect_steps=5000,
-                          collect_steps_per_epoch=1000,  # turn into collect_episodes ?
-                          dynamics_train_steps_per_epoch=32,
-                          sac_train_steps_per_epoch=32):
+                          num_epochs,
+                          initial_collect_steps,
+                          collect_steps_per_epoch,  # turn into collect_episodes ?
+                          dynamics_train_steps_per_epoch,
+                          sac_train_steps_per_epoch):
 
     skill_discovery.train(num_epochs,
                           initial_collect_steps,

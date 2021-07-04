@@ -13,10 +13,12 @@ init_sac_agent.actor_fc_layer_params = (128, 128)
 init_sac_agent.critic_joint_fc_layer_params = (128, 128)
 
 # SKILL DISCOVERY
-train_skill_discovery.num_epochs = 100
+init_skill_discovery.max_skill_length = 100
+
+train_skill_discovery.num_epochs = 200
 train_skill_discovery.initial_collect_steps = 2000
 train_skill_discovery.collect_steps_per_epoch = 1000  # turn into collect_episodes ?
-train_skill_discovery.dynamics_train_steps_per_epoch = 128
+train_skill_discovery.dynamics_train_steps_per_epoch = 64
 train_skill_discovery.sac_train_steps_per_epoch = 128
 
 # DISCRIMINATOR

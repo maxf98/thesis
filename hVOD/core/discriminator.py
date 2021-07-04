@@ -2,28 +2,32 @@ import tensorflow as tf
 import tensorflow_probability as tfp
 import tensorflow.keras as keras
 from tensorflow.keras import backend as K
+import numpy as np
 
 from tensorflow.keras.layers import Input, Dense, Lambda
 from tensorflow.keras.models import Model
 
-# TODO: change network output to multivariate Gaussian with diagonal covariance matrix
+L = 100
+
 class Discriminator:
     def __init__(self,
                  input_dim,
                  intermediate_dim,
                  latent_dim):
         self.input_dim, self.latent_dim = input_dim, latent_dim
+        """
+        we fix the variance at 0.1 for now... though I'm not sure what would be more reasonable
+        """
 
         inputs = Input(shape=input_dim, name='encoder_input')
         x = Dense(intermediate_dim, activation='relu')(inputs)
         x = Dense(intermediate_dim, activation='relu')(x)
         z_mean = Dense(latent_dim, name='z_mean')(x)
-        z_log_var = Dense(latent_dim, name='z_log_var')(x)
 
-        self.model = Model(inputs=inputs, outputs=[z_mean, z_log_var], name='discriminator')
+        self.model = Model(inputs=inputs, outputs=z_mean, name='discriminator')
 
-        def loss(y_true, y_pred):
-            distr = tfp.distributions.MultivariateNormalDiag(y_pred[0], K.exp(y_pred[1]))
+        def loss(y_true, y_pred):  # maximise likelihood of samples under q_phi
+            distr = tfp.distributions.MultivariateNormalDiag(y_pred, [1, 1])
             negative_log_probs = -1 * distr.log_prob(y_true)
             return negative_log_probs
 
@@ -36,12 +40,7 @@ class Discriminator:
         self.model.summary()
 
     def train(self, x, y):
-        return self.model.fit(x, y, verbose=1)
-
-    def _split_batch(self, batch):
-        # could time the split operation, it's technically avoidable so if time consuming change replay buffer
-        x, y = tf.split(batch.observation, [batch.observation.shape[2] - self.latent_dim, self.latent_dim], 2)
-        return x, y
+        return self.model.fit(x, y, verbose=0)
 
     # expects unaugmented observations
     def call(self, batch):
@@ -52,11 +51,15 @@ class Discriminator:
         """
         compute probability of ground truth z given s and g (concatenated)
         """
-        z_mean, z_log_var = self.model.predict(sg)
-        latent_distributions = tfp.distributions.MultivariateNormalDiag(z_mean, K.exp(z_log_var))
-        log_probs = latent_distributions.log_prob(z)
+        z_mean = self.model.predict(sg)
+        latent_distributions = tfp.distributions.MultivariateNormalDiag(z_mean, [1, 1])
+        probs = latent_distributions.log_prob(z)
+        # denoms = tf.map_fn(self._denom, )
 
-        return log_probs
+        # sample other z and
+
+        return probs
+
 
     def save(self, save_to):
         self.model.save(save_to)

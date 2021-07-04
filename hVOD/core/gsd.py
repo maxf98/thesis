@@ -23,7 +23,7 @@ class GoalConditionedSkillDiscovery(SkillDiscovery):
                  logger: lg.Logger,
                  skill_prior,
                  latent_dim,
-                 max_skill_length=30,
+                 max_skill_length,
                  use_state_delta=False,
                  train_batch_size=128
                  ):
@@ -88,7 +88,7 @@ class GoalConditionedSkillDiscovery(SkillDiscovery):
         x = batch.observation[:, 0, :-self.latent_dim]
         y = batch.observation[:, 0, -self.latent_dim:]
         discrim_history = self.skill_discriminator.train(x, y)
-        return discrim_history.history['loss'], discrim_history.history['z_mean_accuracy']
+        return discrim_history.history['loss'], discrim_history.history['accuracy']
 
     def _relabel_ir(self, batch):
         # relabel with intrinsic reward and perform data augmentation
