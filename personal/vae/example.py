@@ -3,6 +3,7 @@ from __future__ import division
 from __future__ import print_function
 
 from thesis.personal.vae import vae_mlp, mnist_plot_results
+from thesis.personal.vae.models import VAE
 
 from tensorflow.keras.layers import Lambda, Input, Dense
 from tensorflow.keras.models import Model
@@ -35,7 +36,7 @@ def vae_mlp_mnist():
     latent_dim = 2
     epochs = 50
 
-    vae = vae_mlp.VAE(original_dim, intermediate_dim, latent_dim)
+    vae = VAE(original_dim, intermediate_dim, latent_dim)
 
     vae.train(x_train, epochs, batch_size)
 
@@ -49,27 +50,27 @@ def vae_mlp_mnist():
 
 
 def vae_mlp_point_env():
-    samples = sample_from_uniform_categorical(num_classes=10, dim=2, num_samples=2000)
+    #samples = sample_from_uniform_categorical(num_classes=10, dim=2, num_samples=2000)
+    samples = tfp.distributions.Uniform(low=[-1., -1.], high=[1., 1.]).sample(10000)
 
     input_dim = 2
-    hidden_dim = 128
-
+    hidden_dim = 2
     latent_dim = 1
-    epochs = 100
-    batch_size = 128
+    epochs = 5
 
-    vae = vae_mlp.TFPVAE(input_dim, hidden_dim, latent_dim)
+    batch_size = 64
 
-    vae.train(samples, epochs, batch_size)
+    vae = vae_mlp.VAE(input_dim, hidden_dim, latent_dim)
+    vae.train(samples, epochs=epochs, batch_size=batch_size)
 
     eval = samples[:10]
 
     latent_samples = tfp.distributions.Normal(loc=0., scale=1.).sample(10)
     #latent_samples = tfp.distributions.MultivariateNormalDiag(loc=[0., 0.], scale_diag=[1., 1.]).sample(10)
 
-    print(eval)
-    z = vae.encoder(eval)
-    print("mean: {} ––– variance: {}".format(tf.reduce_mean(z.mean()), tf.reduce_mean(z.variance())))
+    print(np.around(eval, 2))
+    z_mean, z_log_var, _ = vae.encoder(eval)
+    print("mean: {} ––– variance: {}".format(z_mean, K.exp(z_log_var)))
 
     print(np.around(vae.vae(eval), 2))
 

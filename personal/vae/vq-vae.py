@@ -98,6 +98,7 @@ def vq_vae_loss_wrapper(data_variance, commitment_cost, quantized, x_inputs):
 
 
 
+
 # Hyper Parameters.
 epochs = 1000 # MAX
 batch_size = 64
@@ -118,35 +119,19 @@ esc = keras.callbacks.EarlyStopping(monitor='val_loss', min_delta=1e-4,
 
 # Encoder
 input_img = Input(shape=(28, 28, 1))
-x = Conv2D(32, (3, 3), activation='relu')(input_img)
-#x = BatchNormalization()(x)
-x = Conv2D(32, (3, 3), activation='relu')(x)
-#x = BatchNormalization()(x)
-x = MaxPooling2D(pool_size=(2, 2))(x)
-#x = Dropout(0.2)(x)
-x = Conv2D(64, (3, 3), activation='relu')(x)
-#x = BatchNormalization()(x)
-x = MaxPooling2D(pool_size=(2, 2))(x)
-#x = Dropout(0.3)(x)
-x = Conv2D(64, (3, 3), activation='relu')(x)
-#x = BatchNormalization()(x)
-#x = Dropout(0.4)(x)
-
-# VQVAELayer.
-enc = Conv2D(embedding_dim, kernel_size=(1, 1), strides=(1, 1), name="pre_vqvae")(x)
-enc_inputs = enc
-enc = VQVAELayer(embedding_dim, num_embeddings, commitment_cost, name="vqvae")(enc)
+x = Flatten()(input_img)
+x = Dense(512, activation='relu')(x)
+x = Dense(embedding_dim, activation='relu')(x)
+enc_inputs = x
+enc = VQVAELayer(embedding_dim, num_embeddings, commitment_cost, name="vqvae")(x)
 x = Lambda(lambda enc: enc_inputs + K.stop_gradient(enc - enc_inputs), name="encoded")(enc)
 data_variance = np.var(x_train)
 loss = vq_vae_loss_wrapper(data_variance, commitment_cost, enc, enc_inputs)
 
 # Decoder.
-x = Conv2DTranspose(64, (3, 3), activation='relu')(x)
-x = UpSampling2D()(x)
-x = Conv2DTranspose(32, (3, 3), activation='relu')(x)
-x = UpSampling2D()(x)
-x = Conv2DTranspose(32, (3, 3), activation='relu')(x)
-x = Conv2DTranspose(1, (3, 3))(x)
+x = Dense(512, activation='relu')(x)
+x = Dense(28*28)(x)
+x = tf.keras.layers.Reshape((28, 28, 1))(x)
 
 # Autoencoder.
 vqvae = Model(input_img, x)

@@ -4,7 +4,8 @@ from __future__ import print_function
 
 import tensorflow as tf
 import tensorflow_probability as tfp
-from tensorflow.keras.layers import Lambda, Input, Dense
+from tensorflow import keras
+from tensorflow.keras.layers import Layer, Lambda, Input, Dense
 from tensorflow.keras.models import Model
 from tensorflow.keras.datasets import mnist
 from tensorflow.keras.losses import mse, binary_crossentropy
@@ -54,8 +55,10 @@ class VAE:
         kl_loss = 1 + z_log_var - K.square(z_mean) - K.exp(z_log_var)
         kl_loss = K.sum(kl_loss, axis=-1)
         kl_loss *= -0.5
-        vae_loss = K.mean(reconstruction_loss + kl_loss)
+        vae_loss = K.mean(10 * reconstruction_loss + kl_loss)
+        #vae_loss = K.mean(reconstruction_loss)
         self.vae.add_loss(vae_loss)
+
         self.vae.compile(optimizer='adam')
         self.vae.summary()
 
@@ -100,15 +103,19 @@ class TFPVAE:
 
         latent_inputs = Input(shape=(self.latent_dim,), name='z_sampling')
         x = Dense(self.hidden_dim, activation='relu')(latent_inputs)
-        outputs = Dense(self.input_dim, activation='tanh')(x)
+        outputs = Dense(self.input_dim, activation='sigmoid')(x)
 
         # instantiate decoder model
         self.decoder = Model(latent_inputs, outputs, name='decoder')
         self.decoder.summary()
 
-        outputs = self.decoder(self.encoder.outputs[0])
+        outputs = self.decoder(self.encoder.outputs)
+        reconstruction_loss = K.mean(mse(inputs, outputs) * input_dim)
+        #reconstruction_loss = K.mean(binary_crossentropy(inputs, outputs) * input_dim)
+
         self.vae = Model(inputs, outputs, name='vae_mlp')
-        self.vae.compile(optimizer='adam', loss=mse)
+        self.vae.add_loss(reconstruction_loss)
+        self.vae.compile(optimizer='adam')
         self.vae.summary()
 
     def train(self, x, epochs, batch_size):
@@ -116,7 +123,7 @@ class TFPVAE:
         esc = tf.keras.callbacks.EarlyStopping(monitor='val_loss', min_delta=1e-4,
                                             patience=5, verbose=0, mode='auto',
                                             baseline=None, restore_best_weights=True)
-        self.vae.fit(x, x, epochs=epochs, batch_size=batch_size, validation_split=val_split, callbacks=[])
+        self.vae.fit(x, x, epochs=epochs, batch_size=batch_size, validation_split=val_split, callbacks=[esc])
 
 
 class AutoEncoder:

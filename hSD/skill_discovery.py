@@ -4,9 +4,10 @@ from tqdm import tqdm
 import time
 from tf_agents.environments.tf_environment import TFEnvironment
 
-from core.rollout_driver import RolloutDriver
-from core.skill_discriminator import SkillDiscriminator
-from core.policy_learner import PolicyLearner
+from core.rollout_drivers import RolloutDriver
+from core.skill_discriminators import SkillDiscriminator
+from core.policy_learners import PolicyLearner
+from core.policies import SkillConditionedPolicy
 
 
 class SkillDiscovery(ABC):
@@ -26,41 +27,52 @@ class SkillDiscovery(ABC):
         self.logger = logger
 
     @abstractmethod
-    def preprocess_for_discriminator_training(self, batch):
+    def get_discrim_trainset(self):
+        """defines how the SD agent preprocesses the experience in the replay buffer to feed into the discriminator
+        -- unfortunately need to process before adding to buffer and after, depending on how skill-labels
+         of trajectory are induced"""
         pass
 
     @abstractmethod
-    def preprocess_for_rl_training(self, batch):
+    def get_rl_trainset(self):
+        """defines how reward-labelling and (maybe) data augmentation are performed by the agent before rl training"""
+        pass
+
+    @abstractmethod
+    def log_epoch(self, epoch, discrim_info, rl_info):
         pass
 
     def train(self,
               num_epochs,
               initial_collect_steps,
-              collect_steps_per_epoch):
+              collect_steps_per_epoch,
+              batch_size=32  # other hyperparameters specific to training? (and therefore not any constituent module)
+              ):
 
         for epoch in range(1, num_epochs + 1):
             tqdm.write(f"\nepoch {epoch}")
             # collect transitions from environment -- EXPLORE
             tqdm.write("EXPLORE")
-            self.rollout_driver.collect_experience()
-            experience = self.rollout_driver.get_experience()
+            self.rollout_driver.collect_experience(initial_collect_steps if epoch == 1 else collect_steps_per_epoch)
 
             # train skill_discriminator on transitions -- DISCOVER
             time.sleep(0.5)
             tqdm.write("DISCOVER")
-            x, y = self.preprocess_for_discriminator_training(experience)
+            x, y = self.get_discrim_trainset()
             discriminator_training_info = self.skill_discriminator.train(x, y)
 
             # train rl_agent to optimize skills -- LEARN
             time.sleep(0.5)
             tqdm.write("LEARN")
-            rl_train_batch = self.preprocess_for_rl_training(experience)
-            rl_train_info = self.policy_learner.train(rl_train_batch)
+            experience = self.get_rl_trainset()
+            rl_train_info = self.policy_learner.train(experience)
+
+            self.rollout_driver.policy = SkillConditionedPolicy(self.policy_learner.agent.policy, )
 
             # log losses, times, and possibly visualise
             time.sleep(0.5)
             tqdm.write("logging")
-            self.logger.log(epoch, discriminator_training_info, rl_train_info)
+            self.log_epoch(epoch, discriminator_training_info, rl_train_info)
 
 
 
