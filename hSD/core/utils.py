@@ -9,7 +9,7 @@ from tensorflow.python.framework.tensor_spec import BoundedTensorSpec
 
 
 def aug_obs_spec(obs_spec, new_dim):
-    return BoundedTensorSpec(shape=(new_dim,), dtype=obs_spec.dtype,
+    return BoundedTensorSpec(shape=(new_dim, ), dtype=obs_spec.dtype,
                              name="augmented observation", minimum=obs_spec.minimum, maximum=obs_spec.maximum)
 
 
@@ -24,4 +24,4 @@ def aug_time_step(time_step, z):
     return ts.TimeStep(time_step.step_type,
                        time_step.reward,
                        time_step.discount,
-                       tf.concat([time_step.observation, z], axis=1))
+                       tf.concat([time_step.observation, tf.reshape(z, (1, -1))], axis=-1))

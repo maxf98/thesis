@@ -16,15 +16,13 @@ class SkillDiscovery(ABC):
                  eval_env: TFEnvironment,
                  rollout_driver: RolloutDriver,
                  skill_discriminator: SkillDiscriminator,
-                 policy_learner: PolicyLearner,
-                 logger,
+                 policy_learner: PolicyLearner
                  ):
         self.train_env = train_env
         self.eval_env = eval_env
         self.rollout_driver = rollout_driver
         self.skill_discriminator = skill_discriminator
         self.policy_learner = policy_learner
-        self.logger = logger
 
     @abstractmethod
     def get_discrim_trainset(self):
@@ -34,7 +32,7 @@ class SkillDiscovery(ABC):
         pass
 
     @abstractmethod
-    def get_rl_trainset(self):
+    def get_rl_trainset(self, batch_size):
         """defines how reward-labelling and (maybe) data augmentation are performed by the agent before rl training"""
         pass
 
@@ -42,11 +40,17 @@ class SkillDiscovery(ABC):
     def log_epoch(self, epoch, discrim_info, rl_info):
         pass
 
+    @abstractmethod
+    def save(self):
+        pass
+
     def train(self,
               num_epochs,
               initial_collect_steps,
               collect_steps_per_epoch,
-              batch_size=32  # other hyperparameters specific to training? (and therefore not any constituent module)
+              batch_size,
+              discrim_epochs,
+              sac_train_steps_per_epoch,  # other hyperparameters specific to training? (and therefore not any constituent module)
               ):
 
         for epoch in range(1, num_epochs + 1):
@@ -59,20 +63,25 @@ class SkillDiscovery(ABC):
             time.sleep(0.5)
             tqdm.write("DISCOVER")
             x, y = self.get_discrim_trainset()
-            discriminator_training_info = self.skill_discriminator.train(x, y)
+            discrim_history = self.skill_discriminator.train(x, y, batch_size=batch_size, epochs=discrim_epochs)
+            discrim_train_stats = {'loss': discrim_history.history['loss'], 'accuracy': discrim_history.history['accuracy']}
 
             # train rl_agent to optimize skills -- LEARN
             time.sleep(0.5)
             tqdm.write("LEARN")
-            experience = self.get_rl_trainset()
-            rl_train_info = self.policy_learner.train(experience)
+            sac_train_stats = {'loss': []}
+            for _ in tqdm(range(sac_train_steps_per_epoch)):
+                experience = self.get_rl_trainset(batch_size=batch_size)
+                l = self.policy_learner.train(experience)
+                sac_train_stats['loss'].append(l)
 
-            self.rollout_driver.policy = SkillConditionedPolicy(self.policy_learner.agent.policy, )
+            self.rollout_driver.policy = self.policy_learner.agent.policy
 
             # log losses, times, and possibly visualise
             time.sleep(0.5)
             tqdm.write("logging")
-            self.log_epoch(epoch, discriminator_training_info, rl_train_info)
+            self.log_epoch(epoch, discrim_train_stats, sac_train_stats)
 
+        self.save()
 
 

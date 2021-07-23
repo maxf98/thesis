@@ -10,14 +10,14 @@ from tf_agents.utils import common
 from tf_agents.train.utils import train_utils
 
 
-
 class PolicyLearner(ABC):
     def __init__(self, obs_spec, action_spec, time_step_spec):
         """maximises rewards achieved by skill-conditioned policy"""
         self.obs_spec, self.action_spec, self.time_step_spec = obs_spec, action_spec, time_step_spec
+        self.agent = None
 
     @abstractmethod
-    def train(self, batch) -> TFPolicy:
+    def train(self, batch):
         """trains the policy"""
 
 
@@ -26,7 +26,8 @@ class SACLearner(PolicyLearner):
                  obs_spec,
                  action_spec,
                  time_step_spec,
-                 network_fc_params=(128, 128)
+                 network_fc_params=(128, 128),
+                 entropy_regularized=False
                  ):
         super(SACLearner, self).__init__(obs_spec, action_spec, time_step_spec)
         """
@@ -39,6 +40,7 @@ class SACLearner(PolicyLearner):
         self.target_update_period = 1
         self.gamma = 0.99
         self.reward_scale_factor = 1.0
+        self.alpha_loss_weight = 0.1 if entropy_regularized else 0.
         self.agent = self.initialise_sac_agent()
 
     def initialise_sac_agent(self):
@@ -66,6 +68,7 @@ class SACLearner(PolicyLearner):
             actor_optimizer=self.optimizer(learning_rate=self.learning_rate),
             critic_optimizer=self.optimizer(learning_rate=self.learning_rate),
             alpha_optimizer=self.optimizer(learning_rate=self.learning_rate),
+            alpha_loss_weight=self.alpha_loss_weight,
             target_update_tau=self.target_update_tau,
             target_update_period=self.target_update_period,
             td_errors_loss_fn=tf.math.squared_difference,
@@ -80,4 +83,5 @@ class SACLearner(PolicyLearner):
         return tf_agent
 
     def train(self, batch):
-        pass
+        sac_loss = self.agent.train(batch)
+        return sac_loss.loss

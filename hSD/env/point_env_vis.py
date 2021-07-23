@@ -1,11 +1,13 @@
 import matplotlib.pyplot as plt
-from utils import fixed_option_policy
+from core.policies import FixedOptionPolicy
 
 import tensorflow as tf
-from thesis.hSD.env import point_environment
+import numpy as np
+from env import point_environment
 from tf_agents.environments import tf_py_environment
-from core.diayn.diayn import DIAYNDiscriminator
-from core.diayn.diayn import OracleDiscriminator
+from core.skill_discriminators import UniformCategoricalDiscriminator
+from core.skill_discriminators import OracleDiscriminator
+from core.rollout_drivers import collect_skill_trajectories
 
 
 def get_cmap(num_skills):
@@ -49,95 +51,53 @@ def config_subplot(ax, title=None):
         ax.set_title(title, fontsize=14)
 
 
-def skill_vis(ax, policy, num_skills, env, rollouts_per_skill):
+def discretize_continuous_space(min, max, num_points):
+    step = (max-min) / num_points
+    return [[min + step * x, min + step * y] for x in range(num_points) for y in range(num_points)]
+
+
+def one_hots_for_num_skills(num_skills):
+    return tf.one_hot(list(range(num_skills)), num_skills)
+
+
+def skill_vis(ax, env, policy, skills, rollouts_per_skill, skill_length):
     # collect rollouts w/ policy (store unaugmented observations...) -> visualise rollouts ->
-    skill_trajectories = []
-    for skill in range(num_skills):
-        trajectories = rollout_skill(fixed_option_policy.FixedOptionPolicy(policy, skill, num_skills), env, rollouts_per_skill)
-        skill_trajectories.append(trajectories)
+    skill_trajectories = collect_skill_trajectories(env, policy, skills, rollouts_per_skill, skill_length)
 
-    cmap = get_cmap(num_skills)
-    plot_all_skills(ax, cmap, skill_trajectories)
-
-# refactor skill_vis so it just takes a policy and a set of skills from which to generate skill policies
-def cont_skill_vis(ax, policy, env, num_steps):
-    # assumes skill space of [[-1, -1],[1, 1]]
-    dmin, dmax = -1, 1
-    points_per_axis = 3
-
-    skill_trajectories = []
-    for x in range(points_per_axis):
-        for y in range(points_per_axis):
-            skill = [2 * x / points_per_axis - 1, 2 * y / points_per_axis - 1]
-            skill_policy = fixed_option_policy.FixedOptionPolicyCont(policy, skill)
-            trajectories = rollout_skill(skill_policy, env, 1, num_steps=num_steps)
-            skill_trajectories.append(trajectories)
-
-    cmap = get_cmap(points_per_axis * points_per_axis)
-    plot_all_skills(ax, cmap, skill_trajectories, alpha=0.8)
-
-
-def rollout_skill(skill_policy, env, num_rollouts, num_steps = 50):
-    trajectories = []
-    for _ in range(num_rollouts):
-        traj = []
-        time_step = env.reset()
-        traj.append(time_step.observation.numpy().flatten())
-        for _ in range(num_steps):
-            action_step = skill_policy.action(time_step)
-            next_ts = env.step(action_step.action)
-            traj.append(next_ts.observation.numpy().flatten())
-            time_step = next_ts
-        trajectories.append(traj)
-    return trajectories
+    cmap = get_cmap(len(skills))
+    plot_all_skills(ax, cmap, skill_trajectories, alpha=0.2)
 
 
 def plot_all_skills(ax, cmap, trajectories, alpha=0.2, linewidth=2):
-    for skill in range(len(trajectories)):
-        for i in range(len(trajectories[skill])):
-            traj = trajectories[skill][i]
+    for skill_i in range(len(trajectories)):
+        for i in range(len(trajectories[skill_i])):
+            traj = trajectories[skill_i][i]
             xs = [step[0] for step in traj]
             ys = [step[1] for step in traj]
-            ax.plot(xs, ys, label="Skill #{}".format(skill), color=cmap(skill), alpha=alpha,
+            ax.plot(xs, ys, label="Skill #{}".format(skill_i), color=cmap(skill_i), alpha=alpha,
                     linewidth=linewidth, zorder=10)
 
     # mark starting point
-    ax.plot(trajectories[0][0][0][0], trajectories[0][0][0][1], marker='o', markersize=8, color='black', zorder=11)
+    ax.plot([0], [0], marker='o', markersize=8, color='black', zorder=11)
 
     config_subplot(ax, title="Skills")
 
     return ax
 
 
-def heatmap(ax, discriminator):
+def categorical_discrim_heatmap(ax, discriminator):
     P = 50
     points = tf.constant([[i/P, j/P] for i in range(-P, P, 1) for j in range(-P, P, 1)])
-    pred = discriminator.call(points)
+    pred = discriminator.call(points, return_probs=True)
+    s, p = tf.reshape(tf.argmax(pred, axis=-1), (2*P, 2*P)), tf.reshape(tf.reduce_max(pred, axis=-1), (2*P, 2*P))
+    s, p = s.numpy(), p.numpy()
 
-    vals = tf.reshape(tf.argmax(pred, axis=-1), (2*P, 2*P))
-    cmap = get_cmap(discriminator.num_skills)
-    ax.scatter(points[:,0], points[:,1], c=vals, cmap=cmap, s=10, marker='o')
+    cmap = get_cmap(discriminator.latent_dim)
+    ax.imshow(s, cmap, interpolation='none', alpha=p)
 
-    ax.plot(0, 0, marker='o', markersize=8, color='black', zorder=11)
-
-    config_subplot(ax, "Discriminator heatmap")
+    ax.plot([50], [50], marker='o', markersize=8, color='black', zorder=11)
 
     return ax
-
-
-def latent_skill_vis(ax, decoder: tf.keras.models.Model):
-    # assumes skill space of [[-1, -1],[1, 1]]
-    points_per_axis = 3
-
-    skill_trajectories = []
-    for x in range(points_per_axis):
-        for y in range(points_per_axis):
-            skill = [2 * x / points_per_axis - 1, 2 * y / points_per_axis - 1]
-            delta_s = decoder.call(tf.constant([skill]))
-            skill_trajectories.append([[0., 0.], delta_s])
-
-    cmap = get_cmap(points_per_axis * points_per_axis)
-    plot_all_skills(ax, cmap, skill_trajectories, alpha=0.8)
 
 
 def vis_saved_policy(ax):
@@ -146,16 +106,5 @@ def vis_saved_policy(ax):
     skill_vis(ax, saved_policy, 4, env, 10)
 
 
-def vis_saved_discrim(ax):
-    discriminator = DIAYNDiscriminator(4, load_from="logs/discriminator")
-    heatmap(ax, discriminator)
-
-
-def vis_oracle_discrim():
-    fig, ax = plt.subplots()
-    heatmap(ax, OracleDiscriminator((), (), 4))
-    plt.show()
-
-
 if __name__ == '__main__':
-    vis_oracle_discrim()
+    pass

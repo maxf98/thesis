@@ -1,0 +1,21 @@
+
+
+run_experiment.latent_dim = 4
+
+parse_skill_prior = 'UniformCategorical'
+
+init_rollout_driver.buffer_size = 2000
+init_rollout_driver.skill_length = 50
+init_rollout_driver.episode_length = 50
+
+init_discriminator.hidden_dim = (32, 32)
+
+init_logger.log_dir = 'logs'
+init_logger.create_fig_interval = 1
+
+train_skill_discovery.num_epochs=100
+train_skill_discovery.initial_collect_steps=2000
+train_skill_discovery.collect_steps_per_epoch=2000
+train_skill_discovery.train_batch_size=32
+train_skill_discovery.discrim_epochs=4
+train_skill_discovery.sac_train_steps=128
