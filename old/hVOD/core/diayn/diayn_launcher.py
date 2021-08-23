@@ -11,9 +11,8 @@ from tf_agents.agents.sac import tanh_normal_projection_network
 from tf_agents.train.utils import spec_utils
 from tf_agents.train.utils import train_utils
 
-from core.diayn import diayn
-from core import logger
-from core import utils
+from core import diayn
+from core.modules import utils, logger
 from thesis.hSD.env import point_environment
 
 env_name = "LunarLanderContinuous-v2"  # @param {type:"string"}

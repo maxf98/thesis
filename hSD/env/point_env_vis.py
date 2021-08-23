@@ -1,13 +1,9 @@
 import matplotlib.pyplot as plt
-from core.policies import FixedOptionPolicy
 
 import tensorflow as tf
-import numpy as np
 from env import point_environment
 from tf_agents.environments import tf_py_environment
-from core.skill_discriminators import UniformCategoricalDiscriminator
-from core.skill_discriminators import OracleDiscriminator
-from core.rollout_drivers import collect_skill_trajectories
+from core.modules.rollout_drivers import collect_skill_trajectories
 
 
 def get_cmap(num_skills):

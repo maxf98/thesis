@@ -8,8 +8,7 @@ from tf_agents.trajectories import trajectory
 
 from skill_discovery import SkillDiscovery
 from core.discriminator import Discriminator
-from core import utils
-from core import logger as lg
+from core.modules import utils, logger as lg
 
 
 class GoalConditionedSkillDiscovery(SkillDiscovery):

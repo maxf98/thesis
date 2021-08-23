@@ -12,7 +12,7 @@ from tensorflow.keras.layers import Input, Dense
 from tensorflow.keras.models import Model
 
 from skill_discovery import SkillDiscovery
-from core import utils
+from core.modules import utils
 from tqdm import tqdm
 import math
 
