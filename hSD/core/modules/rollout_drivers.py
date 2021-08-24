@@ -7,9 +7,7 @@ from tf_agents.trajectories import trajectory
 
 from core.modules import utils
 import tensorflow_probability as tfp
-from tqdm import tqdm
 
-from core.modules.policies import FixedOptionPolicy
 
 
 class RolloutDriver(ABC):
@@ -51,7 +49,7 @@ class BaseRolloutDriver(RolloutDriver):
         skill_i, episode_i = 0, 0
         cur_skill_transitions = []  # list of transitions
 
-        for _ in tqdm(range(num_steps)):
+        for _ in range(num_steps):
             if skill_i == self.skill_length:
                 skill_i = 0
                 skill = self.skill_prior.sample()
@@ -77,13 +75,13 @@ def collect_skill_trajectories(env, policy, skills, rollouts_per_skill, skill_le
     trajectories = [[] for _ in range(len(skills))]
 
     for i in range(len(skills)):
-        skill_policy = FixedOptionPolicy(policy, skills[i])
         for si in range(rollouts_per_skill):
             time_step = env.reset()
             cur_traj = []  # only collects states
             for ti in range(skill_length):
                 cur_traj.append(time_step.observation.numpy().flatten().tolist())
-                action_step = skill_policy.action(time_step)
+                aug_time_step = utils.aug_time_step(time_step, skills[i])
+                action_step = policy.action(aug_time_step)
                 time_step = env.step(action_step.action)
 
             trajectories[i].append(cur_traj)

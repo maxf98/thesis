@@ -1,7 +1,7 @@
 from abc import ABC, abstractmethod
 
 from tqdm import tqdm
-import time
+import gtimer as gt
 from tf_agents.environments.tf_environment import TFEnvironment
 
 from core.modules.rollout_drivers import RolloutDriver
@@ -54,24 +54,31 @@ class SkillDiscovery(ABC):
               ):
 
         for epoch in range(1, num_epochs + 1):
-            tqdm.write(f"\nepoch {epoch}")
+            print(f"\nepoch {epoch}")
             # collect transitions from environment -- EXPLORE
             print("EXPLORE")
             self.rollout_driver.collect_experience(initial_collect_steps if epoch == 1 else collect_steps_per_epoch)
+            gt.stamp("exploration", unique=False)
 
             # train skill_discriminator on transitions -- DISCOVER
             print("DISCOVER")
             discrim_train_stats = self.train_skill_model(batch_size, skill_model_train_steps)
+            gt.stamp("skill model training", unique=False)
 
             # train rl_agent to optimize skills -- LEARN
             print("LEARN")
             sac_train_stats = self.train_policy(batch_size, rl_train_steps)
+            gt.stamp("rl training", unique=False)
+
 
             # update exploration/collect policy
             self.rollout_driver.policy = self.policy_learner.policy
 
             # log losses, times, and possibly visualise
             self.log_epoch(epoch, discrim_train_stats, sac_train_stats)
+            gt.stamp("logging", unique=False)
+
+        print(gt.report())
 
         self.save()
 

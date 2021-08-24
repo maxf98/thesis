@@ -1,5 +1,6 @@
 import gin
 import os
+import itertools
 
 import tensorflow_probability
 
@@ -55,18 +56,20 @@ def parse_skill_prior(skill_dim, skill_prior):
     if skill_prior == 'discrete_uniform':
         return tfd.OneHotCategorical(logits=tf.ones(skill_dim), dtype=tf.float32), tf.one_hot(list(range(skill_dim)), skill_dim)
     elif skill_prior == 'cont_uniform':
-        vis_skill_set = discretize_continuous_space(-1, 1, 3)
+        vis_skill_set = discretize_continuous_space(-1, 1, 3, skill_dim)
         return tfd.Uniform(low=[-1.] * skill_dim, high=[1.] * skill_dim), vis_skill_set
     elif skill_prior == 'gaussian':
-        vis_skill_set = discretize_continuous_space(-1, 1, 3)
+        vis_skill_set = discretize_continuous_space(-1, 1, 3, skill_dim)
         return tfd.MultivariateNormalDiag(loc=[0.] * skill_dim, scale_diag=[1.] * skill_dim), vis_skill_set
     else:
         raise ValueError("invalid skill prior")
 
 
-def discretize_continuous_space(min, max, num_points):
+def discretize_continuous_space(min, max, num_points, dim):
     step = (max-min) / num_points
-    return [[min + step * x, min + step * y] for x in range(num_points) for y in range(num_points)]
+    skill_axes = [[min + step * x for x in range(num_points + 1)]] * dim
+    skills = [skill for skill in itertools.product(*skill_axes)]
+    return skills
 
 
 @gin.configurable

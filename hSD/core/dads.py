@@ -46,8 +46,8 @@ class DADS(SkillDiscovery):
             s, z, sp = self.process_batch(experience.observation)
             new_reward, _ = self.compute_dads_reward(s, z, sp)
             experience._replace(reward=tf.concat([np.expand_dims(new_reward, axis=1), experience.reward[:, 1:]], axis=1))
-            sac_stats = self.policy_learner.train(experience)
-            sac_stats['loss'].append(sac_stats)
+            iter_stats = self.policy_learner.train(experience)
+            sac_stats['loss'].append(iter_stats)
             sac_stats['reward'].append(tf.reduce_mean(new_reward))
 
         return sac_stats
@@ -60,7 +60,7 @@ class DADS(SkillDiscovery):
         return s, z, ds_p
 
     def split_observation(self, aug_obs):
-        s, z = tf.split(aug_obs, [self.skill_model.input_dim, self.skill_model.latent_dim], -1)
+        s, z = tf.split(aug_obs, [-1, self._skill_dim], -1)
         return s, z
 
     def compute_dads_reward(self, input_obs, cur_skill, target_obs):
