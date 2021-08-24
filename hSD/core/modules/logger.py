@@ -14,11 +14,13 @@ from env import point_env_vis
 class Logger:
     def __init__(self, log_dir, create_fig_interval, config_path, vis_skill_set):
         self.sac_stats = {'loss': [], 'reward': []}
-        self.discriminator_stats = {'loss': [], 'accuracy': []}
+        self.skill_model_stats = {'loss': [], 'accuracy': []}
 
         self.log_dir = log_dir
 
         self.vis_skill_set = vis_skill_set
+
+        # creates a directory inside the existing one, not a great way to handle this...
         if not os.path.exists(self.log_dir):
             os.makedirs(self.log_dir)
         else:
@@ -32,29 +34,32 @@ class Logger:
         os.mkdir(self.vis_dir)
         self.create_fig_interval = create_fig_interval
 
-    def log(self, epoch, discrim_stats, sac_stats, policy, discriminator, env):
-        self.discriminator_stats['loss'].append(discrim_stats['loss'])
-        self.discriminator_stats['accuracy'].append(discrim_stats['accuracy'])
+    def log(self, epoch, skill_stats, sac_stats, policy, skill_model, env):
+        self.skill_model_stats['loss'].append(skill_stats['loss'])
+        self.skill_model_stats['accuracy'].append(skill_stats['accuracy'])
         self.sac_stats['loss'].append(sac_stats['loss'])
         self.sac_stats['reward'].append(sac_stats['reward'])
 
         if epoch % self.create_fig_interval == 0:
             fig, ((ax1, ax2), (ax3, ax4), (ax5, ax6)) = plt.subplots(3, 2)
-            dl = np.array(self.discriminator_stats["loss"]).flatten()
-            da = np.array(self.discriminator_stats["accuracy"]).flatten()
+            dl = np.array(self.skill_model_stats["loss"]).flatten()
+            da = np.array(self.skill_model_stats["accuracy"]).flatten()
             sl = np.array(self.sac_stats["loss"]).flatten()
+            sr = np.array(self.sac_stats['reward']).flatten()
+
             ax1.plot(range(len(da)), da, color='lightblue', linewidth=3)
-            ax1.set(title='Discriminator accuracy')
+            ax1.set(title='Skill model accuracy')
+
             ax2.plot(range(len(dl)), dl, color='red', linewidth=3)
-            ax2.set(title='Discriminator training loss')
+            ax2.set(title='Skill model training loss')
+
             ax3.plot(range(len(sl)), sl, color='red', linewidth=3)
             ax3.set(title='SAC training loss')
 
-            sr = np.array(self.sac_stats['reward']).flatten()
             ax4.plot(range(len(sr)), sr, color='green', linewidth=3)
             ax4.set(title='intrinsic reward')
 
-            self.skill_vis(ax5, ax6, policy, discriminator, env)
+            self.skill_vis(ax5, ax6, policy, skill_model, env)
 
             fig.set_size_inches(18.5, 10.5)
             fig.subplots_adjust(wspace=0.2, hspace=0.2)
@@ -68,14 +73,14 @@ class Logger:
         shutil.copy(os.path.abspath(config_path), self.log_dir)
         # shutil.copy(os.path.abspath("configs/config.gin"), self.log_dir)
 
-    def skill_vis(self, ax1, ax2, policy, discriminator, env):
-        point_env_vis.skill_vis(ax1, env, policy, self.vis_skill_set, 1, 30)
-        point_env_vis.categorical_discrim_heatmap(ax2, discriminator)
+    def skill_vis(self, ax1, ax2, policy, skill_model, env):
+        point_env_vis.skill_vis(ax1, env, policy, self.vis_skill_set, 5, 20)
+        #point_env_vis.categorical_discrim_heatmap(ax2, skill_model)
 
     def save_stats(self):
         rewards = np.array(self.sac_stats['reward']).flatten()
-        discrim_losses = np.array(self.discriminator_stats['loss']).flatten()
-        discrim_acc = np.array(self.discriminator_stats['accuracy']).flatten()
+        discrim_losses = np.array(self.skill_model_stats['loss']).flatten()
+        discrim_acc = np.array(self.skill_model_stats['accuracy']).flatten()
 
         np.save(os.path.join(self.log_dir, "intrinsic_rewards"), rewards)
         np.save(os.path.join(self.log_dir, "discrim_loss"), discrim_losses)

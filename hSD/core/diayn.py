@@ -15,32 +15,38 @@ class DIAYN(SkillDiscovery):
                  rollout_driver: BaseRolloutDriver,
                  skill_model: SkillModel,
                  policy_learner: PolicyLearner,
+                 skill_dim,
                  logger=None,
                  ):
         super(DIAYN, self).__init__(train_env, eval_env, rollout_driver, skill_model, policy_learner)
+        self.skill_dim = skill_dim
         self.logger = logger
 
-    def get_discrim_trainset(self):
-        """defines how the SD agent preprocesses the experience in the replay buffer to feed into the discriminator
-        -- expects trajectories labelled with ground truth z in replay buffer
-        --> turns them into suitable format for skill_discriminator"""
-
-        dataset = self.rollout_driver.replay_buffer.as_dataset(single_deterministic_pass=True)  # for now we train the discriminator on all experience collected in the last epoch
+    def train_skill_model(self, batch_size, train_steps):
+        dataset = self.rollout_driver.replay_buffer.as_dataset(
+            single_deterministic_pass=True)  # for now we train the discriminator on all experience collected in the last epoch
         aug_obs = tf.stack(list(dataset.map(lambda x, _: x.observation)))
         s, z = self.split_observation(aug_obs)
-        return s, z
+        history = self.skill_model.train(s, z, batch_size=batch_size, epochs=train_steps)
+        return {'loss': history.history['loss'], 'accuracy': history.history['accuracy']}
 
-    def get_rl_trainset(self, batch_size):
-        """defines how reward-labelling and (maybe) data augmentation are performed by the agent before rl training"""
+    def train_policy(self, batch_size, train_steps):
         dataset = self.rollout_driver.replay_buffer.as_dataset(sample_batch_size=batch_size, num_steps=2)
         dataset_iter = iter(dataset)
-        experience, _ = next(dataset_iter)
-        reward_relabelled_experience = self.relabel_ir(experience)
 
-        return reward_relabelled_experience
+        sac_stats = {'loss': [], 'reward': []}
+
+        for _ in range(train_steps):
+            experience, _ = next(dataset_iter)
+            reward_relabelled_experience = self.relabel_ir(experience)
+            iter_stats = self.policy_learner.train(reward_relabelled_experience)
+            sac_stats['loss'].append(iter_stats)
+            sac_stats['reward'].append(tf.reduce_mean(reward_relabelled_experience.reward[:, 0]))
+
+        return sac_stats
 
     def split_observation(self, aug_obs):
-        s, z = tf.split(aug_obs, [self.skill_model.input_dim, self.skill_model.latent_dim], -1)
+        s, z = tf.split(aug_obs, [-1, self.skill_dim], -1)
         return s, z
 
     def relabel_ir(self, batch):  # expects 2-time-step traj (as in SAC)
@@ -54,13 +60,13 @@ class DIAYN(SkillDiscovery):
     def get_reward(self, batch):  # expects single time-step batch (only appropriate for this version of DIAYN)
         batch = tf.squeeze(batch)
         s, z = self.split_observation(batch)
-        log_probs = self.skill_model.log_probs(s, z)
-        r = tf.subtract(log_probs, tf.math.log(1 / self.skill_model.latent_dim))
+        log_probs = self.skill_model.log_prob(s, z)
+        r = tf.subtract(log_probs, tf.math.log(1 / self.skill_dim))
         return r
 
-    def log_epoch(self, epoch, discrim_info, rl_info):
+    def log_epoch(self, epoch, skill_stats, sac_stats):
         if self.logger is not None:
-            self.logger.log(epoch, discrim_info, rl_info, self.policy_learner.policy, self.skill_model, self.eval_env, self.skill_model.latent_dim)
+            self.logger.log(epoch, skill_stats, sac_stats, self.policy_learner.policy, self.skill_model, self.eval_env)
 
     def save(self):
         if self.logger is not None:

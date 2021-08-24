@@ -4,7 +4,7 @@ import os
 import tensorflow_probability
 
 from core.modules.rollout_drivers import BaseRolloutDriver
-from core.modules.skill_models import UniformCategoricalSkillModel, GaussianSkillModel
+from core.modules.skill_models import BaseSkillModel
 from core.modules.policy_learners import SACLearner
 from env.point_environment import PointEnv
 from core.diayn import DIAYN
@@ -17,31 +17,28 @@ from tf_agents.environments.tf_py_environment import TFPyEnvironment
 import tensorflow as tf
 
 tfd = tensorflow_probability.distributions
-"""
-launches DIAYN experiments -- want to subsume this into general launcher class
-"""
 
 
 @gin.configurable
-def run_experiment(objective="s->z", skill_prior='UniformCategorical', skill_dim=4, config_path=None):
+def run_experiment(objective, skill_prior, skill_dim, config_path=None):
     train_env = TFPyEnvironment(PointEnv())
     eval_env = TFPyEnvironment(PointEnv())
 
-    obs_spec, action_spec, time_step_spec = parse_objective(train_env, skill_dim, objective)
+    obs_spec, action_spec, time_step_spec = parse_env_specs(train_env, skill_dim, objective)
 
     skill_prior_distribution, vis_skill_set = parse_skill_prior(skill_dim, skill_prior)
 
     policy_learner = init_policy_learner(obs_spec, action_spec, time_step_spec)
     driver = init_rollout_driver(train_env, policy_learner.agent.collect_policy, skill_prior_distribution)
-    skill_model = init_skill_model(obs_spec.shape[0], train_env.observation_spec().shape[0], skill_prior=skill_prior)
+    skill_model = init_skill_model(objective, skill_prior, train_env.observation_spec().shape[0], skill_dim)
     logger = init_logger(config_path=config_path, vis_skill_set=vis_skill_set)
 
-    agent = init_skill_discovery(objective, train_env, eval_env, driver, skill_model, policy_learner, logger)
+    agent = init_skill_discovery(objective, train_env, eval_env, driver, skill_model, policy_learner, skill_dim, logger)
 
     train_skill_discovery(agent)
 
 
-def parse_objective(env, skill_dim, objective):
+def parse_env_specs(env, skill_dim, objective):
     obs_spec, action_spec, time_step_spec = env.observation_spec(), env.action_spec(), env.time_step_spec()
     obs_dim = obs_spec.shape.as_list()[0]
 
@@ -49,21 +46,22 @@ def parse_objective(env, skill_dim, objective):
         obs_spec = utils.aug_obs_spec(obs_spec, obs_dim + skill_dim)
         time_step_spec = utils.aug_time_step_spec(time_step_spec, obs_dim + skill_dim)
     else:
-        print("objective undefined, this should actually be an error")
+        raise ValueError("invalid objective")
     return obs_spec, action_spec, time_step_spec
 
 
 @gin.configurable
-def parse_skill_prior(latent_dim, skill_prior):
-    if skill_prior == 'UniformCategorical':
-        return tfd.OneHotCategorical(logits=tf.ones(latent_dim), dtype=tf.float32), tf.one_hot(list(range(latent_dim)), latent_dim)
-    elif skill_prior == 'UniformContinuous':
+def parse_skill_prior(skill_dim, skill_prior):
+    if skill_prior == 'discrete_uniform':
+        return tfd.OneHotCategorical(logits=tf.ones(skill_dim), dtype=tf.float32), tf.one_hot(list(range(skill_dim)), skill_dim)
+    elif skill_prior == 'cont_uniform':
         vis_skill_set = discretize_continuous_space(-1, 1, 3)
-        return tfd.Uniform(low=[-1.] * latent_dim, high=[1.] * latent_dim), vis_skill_set
-    elif skill_prior == 'Gaussian':
-        print("not implemented yet... (one line of code)")
+        return tfd.Uniform(low=[-1.] * skill_dim, high=[1.] * skill_dim), vis_skill_set
+    elif skill_prior == 'gaussian':
+        vis_skill_set = discretize_continuous_space(-1, 1, 3)
+        return tfd.MultivariateNormalDiag(loc=[0.] * skill_dim, scale_diag=[1.] * skill_dim), vis_skill_set
     else:
-        print("invalid skill prior given, this should raise an error")
+        raise ValueError("invalid skill prior")
 
 
 def discretize_continuous_space(min, max, num_points):
@@ -78,17 +76,20 @@ def init_rollout_driver(env, policy, skill_prior, buffer_size=5000, skill_length
 
 
 @gin.configurable
-def init_skill_model(input_dim, latent_dim, hidden_dim=(128, 128), skill_prior='UniformCategorical', fix_variance=False):
-    if skill_prior == 'UniformCategorical':
-        return UniformCategoricalSkillModel(input_dim, hidden_dims=hidden_dim, latent_dim=latent_dim)
-    elif skill_prior in ['UniformContinous', 'Gaussian']:
-        return GaussianSkillModel(input_dim, hidden_dims=hidden_dim, latent_dim=latent_dim, fix_variance=fix_variance)
+def init_skill_model(objective, skill_prior, obs_dim, skill_dim, hidden_dim=(128, 128), fix_variance=False):
+    if objective == "s->z":
+        input_dim, output_dim = obs_dim, skill_dim
+    elif objective == "sz->s_p":
+        input_dim, output_dim = obs_dim + skill_dim, obs_dim
     else:
-        print("invalid skill prior given, this should raise an error")
+        raise ValueError("invalid objective")
+
+    return BaseSkillModel(input_dim, output_dim, skill_type=skill_prior, fc_layer_params=hidden_dim,fix_variance=fix_variance)
 
 
 @gin.configurable
 def init_policy_learner(obs_spec, action_spec, time_step_spec, rl_alg='SAC', fc_layer_params=(128, 128), target_entropy=None):
+    """enable other RL algorithms than SAC"""
     if rl_alg == 'SAC':
         return SACLearner(obs_spec, action_spec, time_step_spec, network_fc_params=fc_layer_params, target_entropy=target_entropy)
 
@@ -100,14 +101,13 @@ def init_logger(create_logs=True, log_dir='.', create_fig_interval=5, config_pat
     return None
 
 
-def init_skill_discovery(objective, train_env, eval_env, rollout_driver, skill_model, policy_learner, logger):
+def init_skill_discovery(objective, train_env, eval_env, rollout_driver, skill_model, policy_learner, skill_dim, logger):
     if objective == 's->z':
-        return DIAYN(train_env, eval_env, rollout_driver, skill_model, policy_learner, logger)
+        return DIAYN(train_env, eval_env, rollout_driver, skill_model, policy_learner, skill_dim, logger)
     elif objective == 'sz->s_p':
-        return DADS(train_env, eval_env, rollout_driver, skill_model, policy_learner, logger, skill_dim=2)
+        return DADS(train_env, eval_env, rollout_driver, skill_model, policy_learner, skill_dim, logger)
     else:
-        print('objective undefined, we should not have gotten here')
-        return None
+        raise ValueError("invalid objective")
 
 
 @gin.configurable

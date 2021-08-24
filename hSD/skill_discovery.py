@@ -24,14 +24,14 @@ class SkillDiscovery(ABC):
         self.policy_learner = policy_learner
 
     @abstractmethod
-    def get_discrim_trainset(self):
+    def train_skill_model(self, batch_size, train_steps):
         """defines how the SD agent preprocesses the experience in the replay buffer to feed into the discriminator
         -- unfortunately need to process before adding to buffer and after, depending on how skill-labels
          of trajectory are induced"""
         pass
 
     @abstractmethod
-    def get_rl_trainset(self, batch_size):
+    def train_policy(self, batch_size, train_steps):
         """defines how reward-labelling and (maybe) data augmentation are performed by the agent before rl training
         maybe we should still make this return an iterator (right now I create a new one every time..."""
         pass
@@ -56,30 +56,21 @@ class SkillDiscovery(ABC):
         for epoch in range(1, num_epochs + 1):
             tqdm.write(f"\nepoch {epoch}")
             # collect transitions from environment -- EXPLORE
-            tqdm.write("EXPLORE")
+            print("EXPLORE")
             self.rollout_driver.collect_experience(initial_collect_steps if epoch == 1 else collect_steps_per_epoch)
 
             # train skill_discriminator on transitions -- DISCOVER
-            time.sleep(0.5)
-            tqdm.write("DISCOVER")
-            x, y = self.get_discrim_trainset()
-            discrim_history = self.skill_model.train(x, y, batch_size=batch_size, epochs=skill_model_train_steps)
-            discrim_train_stats = {'loss': discrim_history.history['loss'], 'accuracy': discrim_history.history['accuracy']}
+            print("DISCOVER")
+            discrim_train_stats = self.train_skill_model(batch_size, skill_model_train_steps)
 
             # train rl_agent to optimize skills -- LEARN
-            time.sleep(0.5)
-            tqdm.write("LEARN")
-            sac_train_stats = {'loss': []}
-            for _ in tqdm(range(rl_train_steps)):
-                experience = self.get_rl_trainset(batch_size=batch_size)
-                l = self.policy_learner.train(experience)
-                sac_train_stats['loss'].append(l)
+            print("LEARN")
+            sac_train_stats = self.train_policy(batch_size, rl_train_steps)
 
-            self.rollout_driver.policy = self.policy_learner.agent.policy
+            # update exploration/collect policy
+            self.rollout_driver.policy = self.policy_learner.policy
 
             # log losses, times, and possibly visualise
-            time.sleep(0.5)
-            tqdm.write("logging")
             self.log_epoch(epoch, discrim_train_stats, sac_train_stats)
 
         self.save()

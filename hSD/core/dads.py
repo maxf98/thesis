@@ -16,8 +16,8 @@ class DADS(SkillDiscovery):
                  rollout_driver: BaseRolloutDriver,
                  skill_model: SkillModel,
                  policy_learner: PolicyLearner,
+                 skill_dim,
                  logger=None,
-                 skill_dim=4,
                  prior_samples=100,
                  ):
         super(DADS, self).__init__(train_env, eval_env, rollout_driver, skill_model, policy_learner)
@@ -26,29 +26,31 @@ class DADS(SkillDiscovery):
         self._skill_dim = skill_dim
         self._prior_samples = prior_samples
 
-    def get_discrim_trainset(self):
-        """defines how the SD agent preprocesses the experience in the replay buffer to feed into the discriminator
-        -- expects trajectories labelled with ground truth z in replay buffer
-        --> turns them into suitable format for skill_discriminator"""
-
-        dataset = self.rollout_driver.replay_buffer.as_dataset(num_steps=2, single_deterministic_pass=True)  # for now we train the discriminator on all experience collected in the last epoch
+    def train_skill_model(self, batch_size, train_steps):
+        # for now we train the discriminator on all experience in the replay buffer (rather than sampling from it repeatedly)
+        dataset = self.rollout_driver.replay_buffer.as_dataset(num_steps=2, single_deterministic_pass=True)
         aug_obs = tf.stack(list(dataset.map(lambda x, _: x.observation)))
         s, z, ds_p = self.process_batch(aug_obs)
-        return tf.concat([s, z], axis=-1), ds_p
+        history = self.skill_model.train(tf.concat([s, z], axis=-1), ds_p, batch_size=batch_size, epochs=train_steps)
 
-    def get_rl_trainset(self, batch_size):
-        """defines how reward-labelling and (maybe) data augmentation are performed by the agent before rl training"""
+        return {'losses': history.history['loss'], 'accuracy': history.history['accuracy']}
+
+    def train_policy(self, batch_size, train_steps):
         dataset = self.rollout_driver.replay_buffer.as_dataset(sample_batch_size=batch_size, num_steps=2)
         dataset_iter = iter(dataset)
-        experience, _ = next(dataset_iter)
-        s, z, sp = self.process_batch(experience.observation)
-        new_reward, _ = self.compute_dads_reward(s, z, sp)
-        experience._replace(
-            reward=tf.concat(
-                [np.expand_dims(new_reward, axis=1), experience.reward[:, 1:]],
-                axis=1))
 
-        return experience
+        sac_stats = {'loss': [], 'reward': []}
+
+        for _ in range(train_steps):
+            experience, _ = next(dataset_iter)
+            s, z, sp = self.process_batch(experience.observation)
+            new_reward, _ = self.compute_dads_reward(s, z, sp)
+            experience._replace(reward=tf.concat([np.expand_dims(new_reward, axis=1), experience.reward[:, 1:]], axis=1))
+            sac_stats = self.policy_learner.train(experience)
+            sac_stats['loss'].append(sac_stats)
+            sac_stats['reward'].append(tf.reduce_mean(new_reward))
+
+        return sac_stats
 
     def process_batch(self, batch):
         s = batch[:, 0, :self._skill_dim]
@@ -82,6 +84,7 @@ class DADS(SkillDiscovery):
         return intrinsic_reward, {'logp': logp, 'logp_altz': logp_altz.flatten()}
 
     def log_epoch(self, epoch, discrim_info, rl_info):
+        return
         if self.logger is not None:
             self.logger.log(epoch, discrim_info, rl_info, self.policy_learner.policy, self.skill_model, self.eval_env)
 

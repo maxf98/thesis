@@ -19,8 +19,7 @@ class RolloutDriver(ABC):
                  skill_prior: tfp.distributions.Distribution,
                  skill_length,
                  episode_length,
-                 buffer_size,
-                 preprocess_fn=None):
+                 buffer_size):
         """fills the replay buffer with experience from the environment, collected using the given policy"""
         self.environment = environment
         self.policy = policy
@@ -28,7 +27,6 @@ class RolloutDriver(ABC):
         self.skill_length = skill_length
         self.episode_length = episode_length
         self.replay_buffer = TFUniformReplayBuffer(policy.collect_data_spec, environment.batch_size, max_length=buffer_size)
-        self.preprocess_fn = preprocess_fn
 
     @abstractmethod
     def collect_experience(self, num_steps):
@@ -43,10 +41,9 @@ class BaseRolloutDriver(RolloutDriver):
                  skill_prior,
                  skill_length,
                  episode_length,
-                 buffer_size,
-                 preprocess_fn=None  # function to apply to transitions before adding to the replay buffer (i.e. convert to data spec)
+                 buffer_size
                  ):
-        super().__init__(environment, policy, skill_prior, skill_length, episode_length, buffer_size, preprocess_fn)
+        super().__init__(environment, policy, skill_prior, skill_length, episode_length, buffer_size)
 
     def collect_experience(self, num_steps):
         time_step = self.environment.reset()

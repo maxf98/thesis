@@ -1,9 +1,7 @@
 from abc import ABC, abstractmethod
-import math
 import tensorflow as tf
 from tensorflow import keras as tfk
 from tensorflow.keras import layers as tfkl
-from tensorflow.keras import backend as K
 import tensorflow_probability.python.distributions as tfd
 import tensorflow_probability.python.layers as tfpl
 import tensorflow_probability as tfp
@@ -15,7 +13,7 @@ import numpy as np
 class SkillModel(ABC):
     @abstractmethod
     def train(self, x, y=None, batch_size=32, epochs=1):
-        """perform discriminator(/generator) training"""
+        """perform model(/generator) training"""
 
     @abstractmethod
     def call(self, x):
@@ -23,25 +21,30 @@ class SkillModel(ABC):
 
     @abstractmethod
     def log_prob(self, x, y):
-        """evaluate likelihood of mapping x to z under discriminator"""
+        """evaluate likelihood of mapping x to z under current model"""
 
     @abstractmethod
     def save(self, log_dir):
-        """saves the underlying discriminator model (not necessarily keras model, not necessarily need to be saved)"""
+        """saves the underlying skill model (not necessarily keras model, not necessarily need to be saved)"""
 
 
-class SkillDiscriminator(SkillModel):
+"""
+Base probabilistic skill model...
+DADS implements a mixture of experts model, we can do that too still, but for point environments this should suffice
+anyway...
+"""
+class BaseSkillModel(SkillModel):
     def __init__(
             self,
-            observation_dim,
-            skill_dim,
+            input_dim,
+            output_dim,
             skill_type,
             normalize_observations=False,
             fc_layer_params=(256, 256),
             fix_variance=False):
-        super(SkillDiscriminator, self).__init__()
-        self.observation_dim = observation_dim
-        self.skill_dim = skill_dim
+        super(BaseSkillModel, self).__init__()
+        self.input_dim = input_dim
+        self.output_dim = output_dim
         self.skill_type = skill_type
         self.normalize_observations = normalize_observations
         self.fc_layer_params = fc_layer_params
@@ -51,197 +54,71 @@ class SkillDiscriminator(SkillModel):
             self.std_lower_clip = 0.3
             self.std_upper_clip = 10.0
 
-        inputs = tfkl.Input(self.observation_dim)
-        if self.normalize_observations:
-            inputs = tfkl.BatchNormalization(inputs)
-
-        outputs, prior_distribution = self.default_discriminator(inputs)
+        inputs = tfkl.Input(self.input_dim)
+        outputs = self.build_model(inputs)
 
         self.model = tfk.Model(inputs, outputs, name='discriminator')
 
         self.model.compile(
-            loss=lambda y, model: -model.log_prob(y),
+            loss=lambda y, p_y: -p_y.log_prob(y),
             optimizer=tfk.optimizers.Adam(),
             metrics=["accuracy"]
         )
 
-    def get_distributions(self, out):
+    def build_model(self, inputs):
+        x = tfkl.BatchNormalization(inputs) if self.normalize_observations else inputs
+        x = self.mlp_block(x)
+        return self.apply_distribution(x)
+
+
+    def apply_distribution(self, x):
         if self.skill_type in ['gaussian', 'cont_uniform']:
-            mean = tfkl.Dense(
-                out, self.skill_dim, name='mean')
-            if not self.fix_variance:
-                stddev = tf.clip_by_value(
-                    tfkl.Dense(
-                        out,
-                        self.skill_dim,
-                        activation=tf.nn.softplus,
-                        name='stddev'), self.std_lower_clip, self.std_upper_clip)
+            if self.fix_variance:
+                x = tfkl.Dense(self.output_dim)(x)
+                x = tfpl.DistributionLambda(lambda t: tfd.MultivariateNormalDiag(loc=t, scale_diag=[1.] * self.output_dim))(x)
             else:
-                stddev = tf.fill([tf.shape(out)[0], self.skill_dim], 1.0)
+                x = tfkl.Dense(2 * self.output_dim)(x)  # top half learns means, bottom half learns variance
+                x = tfpl.DistributionLambda(lambda t: tfd.MultivariateNormalDiag(
+                    loc=t[:self.output_dim],
+                    scale_diag=tf.clip_by_value(t[self.output_dim:], self.std_lower_clip, self.std_upper_clip)
+                ))(x)
 
-            inference_distribution = tfd.MultivariateNormalDiag(
-                loc=mean, scale_diag=stddev)
-
-            if self.skill_type == 'gaussian':
-                prior_distribution = tfd.MultivariateNormalDiag(
-                    loc=[0.] * self.skill_dim, scale_diag=[1.] * self.skill_dim)
-            elif self.skill_type == 'cont_uniform':
-                prior_distribution = tfd.Independent(
-                    tfd.Uniform(
-                        low=[-1.] * self.skill_dim, high=[1.] * self.skill_dim),
-                    reinterpreted_batch_ndims=1)
-
+            if self.skill_type == 'cont_uniform':
                 # squash posterior to the right range of [-1, 1]
-                bijectors = []
-                bijectors.append(tanh_bijector_stable.Tanh())
-                bijector_chain = tfp.bijectors.Chain(bijectors)
-                inference_distribution = tfd.TransformedDistribution(
-                    distribution=inference_distribution, bijector=bijector_chain)
+                bijector_chain = tfp.bijectors.Chain([tanh_bijector_stable.Tanh()])  # not really sure what this is tbh
+                x = tfpl.DistributionLambda(lambda t: tfd.TransformedDistribution(
+                    distribution=t, bijector=bijector_chain))(x)
+
 
         elif self.skill_type == 'discrete_uniform':
-            logits = tfkl.Dense(
-                out, self.skill_dim, name='logits')
-            inference_distribution = tfd.OneHotCategorical(logits=logits)
-            prior_distribution = tfd.OneHotCategorical(probs=[1. / self.skill_dim] * self.skill_dim)
-        elif self.skill_type == 'multivariate_bernoulli':
-            print('Not supported yet')
+            x = tfk.layers.Dense(tfpl.OneHotCategorical.params_size(self.output_dim) - 1)(x)
+            x = tfk.layers.Lambda(lambda x: tf.pad(x, paddings=[[0, 0], [1, 0]]))(x)
+            x = tfpl.OneHotCategorical(self.output_dim)(x)
 
-        return inference_distribution, prior_distribution
+        return x
 
-    def default_discriminator(self, inputs):
-        out = inputs
+
+    def mlp_block(self, inputs):
+        x = inputs
         for idx, layer_size in enumerate(self.fc_layer_params):
-            out = tfkl.Dense(
-                out,
+            x = tfkl.Dense(
                 layer_size,
                 activation=tf.nn.relu,
-                name='hid_' + str(idx))
+                name='hid_' + str(idx))(x)
 
-        return self.get_distributions(out)
+        return x
 
     def train(self, x, y=None, batch_size=32, epochs=1):
-        return self.model.fit(x, y, batch_size=batch_size, epochs=epochs)
+        return self.model.fit(x, y, batch_size=batch_size, epochs=epochs, verbose=0)
 
-    def call(self, x, return_probs=False):
-        probs = self.model.predict(x)
-        if return_probs:
-            return probs
-        return tf.one_hot([tf.argmax(probs, axis=-1)], self.latent_dim)
+    def call(self, x):
+        return self.model(x)
 
     def log_prob(self, x, y, return_full=False):
         """expects z as one-hot vector"""
-        probs = self.model.predict(x)
-
-        if not return_full:
-            probs = tf.reduce_max(tf.multiply(probs, y), axis=-1)
-
-        return tf.math.log(probs)
+        pred_distr = self.model(x)
+        return pred_distr.log_prob(y)
 
     def save(self, log_dir):
         self.model.save(log_dir)
 
-
-class SkillDynamics(SkillModel):
-    def __init__(
-            self,
-            observation_dim,
-            skill_dim,
-            normalize_observations=False,
-            fc_layer_params=(256, 256),
-            network_type='default',
-            num_components=1,
-            fix_variance=False,
-            reweigh_batches=False):
-
-        self.observation_dim = observation_dim
-        self.skill_dim = skill_dim
-        self.normalize_observations = normalize_observations
-        self.reweigh_batches = reweigh_batches
-
-        # dynamics network properties
-        self._fc_layer_params = fc_layer_params
-        self._network_type = network_type
-        self._num_components = num_components
-        self._fix_variance = fix_variance
-        if not self._fix_variance:
-            self._std_lower_clip = 0.3
-            self._std_upper_clip = 10.0
-
-        inputs = tfkl.Input(observation_dim + skill_dim)
-        outputs = self.default_model(inputs)
-
-        self.model = tfk.Model(inputs, outputs, name="dynamics")
-        self.model.compile(
-            loss=lambda y, model: -model.log_prob(y),
-            optimizer=tfk.optimizers.Adam(),
-            metrics=["accuracy"]
-        )
-
-    def get_distribution(self, out):
-        if self._num_components > 1:
-            self.logits = tfkl.Dense(
-                out, self._num_components, name='logits')
-            means, scale_diags = [], []
-            for component_id in range(self._num_components):
-                means.append(tfkl.Dense(out, self.observation_dim, name='mean_' + str(component_id)))
-                if not self._fix_variance:
-                    scale_diags.append(
-                        tf.clip_by_value(
-                            tfkl.Dense(
-                                out,
-                                self.observation_dim,
-                                activation=tf.nn.softplus,
-                                name='stddev_' + str(component_id)), self._std_lower_clip, self._std_upper_clip))
-                else:
-                    scale_diags.append(tf.fill([tf.shape(out)[0], self.observation_dim], 1.0))
-
-            self.means = tf.stack(means, axis=1)
-            self.scale_diags = tf.stack(scale_diags, axis=1)
-            return tfd.MixtureSameFamily(
-                mixture_distribution=tfd.Categorical(
-                    logits=self.logits),
-                components_distribution=tfd.MultivariateNormalDiag(
-                    loc=self.means, scale_diag=self.scale_diags))
-
-        else:
-            mean = tf.compat.v1.layers.dense(
-                out, self.observation_dim, name='mean', reuse=tf.compat.v1.AUTO_REUSE)
-            if not self._fix_variance:
-                stddev = tf.clip_by_value(
-                    tf.compat.v1.layers.dense(
-                        out,
-                        self.observation_dim,
-                        activation=tf.nn.softplus,
-                        name='stddev',
-                        reuse=tf.compat.v1.AUTO_REUSE), self._std_lower_clip,
-                    self._std_upper_clip)
-            else:
-                stddev = tf.fill([tf.shape(out)[0], self.observation_dim], 1.0)
-            return tfd.MultivariateNormalDiag(loc=mean, scale_diag=stddev)
-
-    def default_model(self, inputs):
-        out = inputs
-        for idx, layer_size in enumerate(self._fc_layer_params):
-            out = tf.compat.v1.layers.dense(
-                out,
-                layer_size,
-                activation=tf.nn.relu,
-                name='hid_' + str(idx),
-                reuse=tf.compat.v1.AUTO_REUSE)
-
-        return self.get_distribution(out)
-
-    def train(self, x, y=None, batch_size=32, epochs=1):
-        return self.model.fit(x, y, batch_size=batch_size, epochs=epochs)
-
-    def call(self, x):
-        # I think this automatically samples from the distribution produced in the output layer,
-        # rather than returning the distribution
-        return self.model.predict(x)
-
-    def log_prob(self, x, y):
-        distr = self.model(x)
-        return distr.log_prob(y)
-
-    def save(self, log_dir):
-        self.model.save(log_dir)

@@ -1,7 +1,7 @@
 run_experiment.objective = 'sz->s_p'
 run_experiment.skill_dim = 2
 
-parse_skill_prior.skill_prior = 'UniformContinuous'
+parse_skill_prior.skill_prior = 'cont_uniform'
 
 init_rollout_driver.buffer_size = 2000
 init_rollout_driver.skill_length = 20
@@ -19,7 +19,7 @@ init_logger.log_dir = 'logs/dads/base'
 init_logger.create_fig_interval = 1
 
 train_skill_discovery.num_epochs=50
-train_skill_discovery.initial_collect_steps=100
+train_skill_discovery.initial_collect_steps=2000
 train_skill_discovery.collect_steps_per_epoch=2000
 train_skill_discovery.train_batch_size=64
 train_skill_discovery.skill_model_train_steps=32
