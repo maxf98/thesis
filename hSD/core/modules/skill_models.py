@@ -70,25 +70,26 @@ class BaseSkillModel(SkillModel):
         x = self.mlp_block(x)
         return self.apply_distribution(x)
 
-
     def apply_distribution(self, x):
         if self.skill_type in ['gaussian', 'cont_uniform']:
             if self.fix_variance:
                 x = tfkl.Dense(self.output_dim)(x)
-                x = tfpl.DistributionLambda(lambda t: tfd.MultivariateNormalDiag(loc=t, scale_diag=[1.] * self.output_dim))(x)
+                x = tfpl.DistributionLambda(lambda t: tfd.MultivariateNormalDiag(loc=t, scale_diag=[0.1]*self.output_dim))(x)
             else:
-                x = tfkl.Dense(2 * self.output_dim)(x)  # top half learns means, bottom half learns variance
+                x = tfkl.Dense(tfpl.IndependentNormal.params_size(self.output_dim))(x)  # top half learns means, bottom half learns variance
+                x = tfpl.IndependentNormal(self.output_dim)(x)  # no variance clipping yet
+                """
+                x = tfkl.Dense(2 * self.output_dim)(x)
                 x = tfpl.DistributionLambda(lambda t: tfd.MultivariateNormalDiag(
                     loc=t[:self.output_dim],
                     scale_diag=tf.clip_by_value(t[self.output_dim:], self.std_lower_clip, self.std_upper_clip)
                 ))(x)
-
+                """
             if self.skill_type == 'cont_uniform':
                 # squash posterior to the right range of [-1, 1]
                 bijector_chain = tfp.bijectors.Chain([tanh_bijector_stable.Tanh()])  # not really sure what this is tbh
                 x = tfpl.DistributionLambda(lambda t: tfd.TransformedDistribution(
                     distribution=t, bijector=bijector_chain))(x)
-
 
         elif self.skill_type == 'discrete_uniform':
             x = tfk.layers.Dense(tfpl.OneHotCategorical.params_size(self.output_dim) - 1)(x)
@@ -96,7 +97,6 @@ class BaseSkillModel(SkillModel):
             x = tfpl.OneHotCategorical(self.output_dim)(x)
 
         return x
-
 
     def mlp_block(self, inputs):
         x = inputs
@@ -122,3 +122,75 @@ class BaseSkillModel(SkillModel):
     def save(self, log_dir):
         self.model.save(log_dir)
 
+
+"""implements mixture of experts skill dynamics model used in DADS"""
+class SkillDynamics(SkillModel):
+    def __init__(
+            self,
+            input_dim,
+            output_dim,
+            num_components=4,
+            normalize_observations=False,
+            fc_layer_params=(256, 256),
+            fix_variance=False):
+        super(SkillDynamics, self).__init__()
+        self.input_dim = input_dim
+        self.output_dim = output_dim
+        self.num_components = num_components
+        self.normalize_observations = normalize_observations
+        self.fc_layer_params = fc_layer_params
+        self.fix_variance = fix_variance
+
+        if not self.fix_variance:
+            self.std_lower_clip = 0.3
+            self.std_upper_clip = 10.0
+
+        inputs = tfkl.Input(self.input_dim)
+        outputs = self.build_model(inputs)
+
+        self.model = tfk.Model(inputs, outputs, name='discriminator')
+
+        self.model.compile(
+            loss=lambda y, p_y: -p_y.log_prob(y),
+            optimizer=tfk.optimizers.Adam(),
+            metrics=["accuracy"]
+        )
+
+    def build_model(self, inputs):
+        x = tfkl.BatchNormalization(inputs) if self.normalize_observations else inputs
+        x = self.mlp_block(x)
+        return self.apply_distribution(x)
+
+    def mlp_block(self, inputs):
+        x = inputs
+        for idx, layer_size in enumerate(self.fc_layer_params):
+            x = tfkl.Dense(
+                layer_size,
+                activation=tf.nn.relu,
+                name='hid_' + str(idx))(x)
+
+        return x
+
+    def apply_distribution(self, x):
+        """for now we assume that the number of components is equal to 4 and the variance is fixed, throw an error otherwise..."""
+
+        x = tfkl.Dense(tfpl.MixtureSameFamily.params_size(self.num_components, self.output_dim))(x)
+        scale_diag = [0.5] * self.output_dim
+        make_distr_func = lambda t: tfd.MultivariateNormalDiag(loc=t, scale_diag=scale_diag)
+        x = tfpl.MixtureSameFamily(self.num_components, tfpl.DistributionLambda(make_distr_func))(x)
+
+        return x
+
+    def train(self, x, y=None, batch_size=32, epochs=1):
+        return self.model.fit(x, y, batch_size=batch_size, epochs=epochs, verbose=0)
+
+    def call(self, x):
+        return self.model(x)
+
+    def log_prob(self, x, y, return_full=False):
+        """expects z as one-hot vector"""
+        pred_distr = self.model(x)
+        return pred_distr.log_prob(y)
+
+    def save(self, log_dir):
+        self.model.save(log_dir)

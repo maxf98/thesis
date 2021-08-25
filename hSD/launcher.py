@@ -5,7 +5,7 @@ import itertools
 import tensorflow_probability
 
 from core.modules.rollout_drivers import BaseRolloutDriver
-from core.modules.skill_models import BaseSkillModel
+from core.modules.skill_models import BaseSkillModel, SkillDynamics
 from core.modules.policy_learners import SACLearner
 from env.point_environment import PointEnv
 from core.diayn import DIAYN
@@ -82,25 +82,27 @@ def init_rollout_driver(env, policy, skill_prior, buffer_size=5000, skill_length
 def init_skill_model(objective, skill_prior, obs_dim, skill_dim, hidden_dim=(128, 128), fix_variance=False):
     if objective == "s->z":
         input_dim, output_dim = obs_dim, skill_dim
+        return BaseSkillModel(input_dim, output_dim, skill_type=skill_prior, fc_layer_params=hidden_dim,
+                              fix_variance=fix_variance)
     elif objective == "sz->s_p":
         input_dim, output_dim = obs_dim + skill_dim, obs_dim
+        return SkillDynamics(input_dim, output_dim, fix_variance=True)
     else:
         raise ValueError("invalid objective")
 
-    return BaseSkillModel(input_dim, output_dim, skill_type=skill_prior, fc_layer_params=hidden_dim,fix_variance=fix_variance)
 
 
 @gin.configurable
-def init_policy_learner(obs_spec, action_spec, time_step_spec, rl_alg='SAC', fc_layer_params=(128, 128), target_entropy=None):
+def init_policy_learner(obs_spec, action_spec, time_step_spec, rl_alg='SAC', fc_layer_params=(128, 128), target_entropy=None, reward_scale_factor=10.0):
     """enable other RL algorithms than SAC"""
     if rl_alg == 'SAC':
-        return SACLearner(obs_spec, action_spec, time_step_spec, network_fc_params=fc_layer_params, target_entropy=target_entropy)
+        return SACLearner(obs_spec, action_spec, time_step_spec, network_fc_params=fc_layer_params, target_entropy=target_entropy, reward_scale_factor=reward_scale_factor)
 
 
 @gin.configurable
-def init_logger(create_logs=True, log_dir='.', create_fig_interval=5, config_path=None, vis_skill_set=None):
+def init_logger(create_logs=True, log_dir='.', create_fig_interval=5, config_path=None, vis_skill_set=None, skill_length=30, num_samples_per_skill=5):
     if create_logs:
-        return Logger(log_dir, create_fig_interval=create_fig_interval, config_path=config_path, vis_skill_set=vis_skill_set)
+        return Logger(log_dir, create_fig_interval=create_fig_interval, config_path=config_path, vis_skill_set=vis_skill_set, skill_length=skill_length, num_samples_per_skill=num_samples_per_skill)
     return None
 
 
@@ -119,7 +121,6 @@ def train_skill_discovery(sd_agent, num_epochs=100, initial_collect_steps=5000, 
 
 
 if __name__ == '__main__':
-    tf.config.run_functions_eagerly(True)
     config_root_dir = "configs/run-configs"
     configs = os.listdir(config_root_dir)
     print(configs)

@@ -12,13 +12,15 @@ from env import point_env_vis
 
 
 class Logger:
-    def __init__(self, log_dir, create_fig_interval, config_path, vis_skill_set):
+    def __init__(self, log_dir, create_fig_interval, config_path, vis_skill_set, skill_length, num_samples_per_skill):
         self.sac_stats = {'loss': [], 'reward': []}
         self.skill_model_stats = {'loss': [], 'accuracy': []}
 
         self.log_dir = log_dir
 
         self.vis_skill_set = vis_skill_set
+        self.skill_length = skill_length
+        self.num_samples_per_skill = num_samples_per_skill
 
         # creates a directory inside the existing one, not a great way to handle this...
         if not os.path.exists(self.log_dir):
@@ -74,7 +76,7 @@ class Logger:
         # shutil.copy(os.path.abspath("configs/config.gin"), self.log_dir)
 
     def skill_vis(self, ax1, ax2, policy, skill_model, env):
-        point_env_vis.skill_vis(ax1, env, policy, self.vis_skill_set, 5, 20)
+        point_env_vis.skill_vis(ax1, env, policy, self.vis_skill_set, self.num_samples_per_skill, self.skill_length)
         #point_env_vis.categorical_discrim_heatmap(ax2, skill_model)
 
     def save_stats(self):

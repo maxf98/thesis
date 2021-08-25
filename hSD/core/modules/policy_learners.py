@@ -20,6 +20,11 @@ class PolicyLearner(ABC):
         """trains the policy"""
 
     @property
+    def collect_policy(self):
+        """returns current policy for collecting environment experience"""
+        return None
+
+    @property
     def policy(self):
         """returns the current policy"""
         return None
@@ -31,7 +36,8 @@ class SACLearner(PolicyLearner):
                  action_spec,
                  time_step_spec,
                  network_fc_params=(128, 128),
-                 target_entropy=None
+                 target_entropy=None,
+                 reward_scale_factor=10.0
                  ):
         super(SACLearner, self).__init__(obs_spec, action_spec, time_step_spec)
         """
@@ -44,7 +50,7 @@ class SACLearner(PolicyLearner):
         self.target_update_period = 1
         self.gamma = 0.99
         self.alpha_loss_weight = 1.0
-        self.reward_scale_factor = 10.0
+        self.reward_scale_factor = reward_scale_factor
         self.target_entropy = target_entropy
         self.agent = self.initialise_sac_agent()
 
@@ -90,6 +96,10 @@ class SACLearner(PolicyLearner):
     def train(self, batch):
         sac_loss = self.agent.train(batch)
         return sac_loss.loss
+
+    @property
+    def collect_policy(self):
+        return self.agent.collect_policy
 
     @property
     def policy(self):

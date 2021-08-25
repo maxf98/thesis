@@ -70,9 +70,8 @@ class SkillDiscovery(ABC):
             sac_train_stats = self.train_policy(batch_size, rl_train_steps)
             gt.stamp("rl training", unique=False)
 
-
             # update exploration/collect policy
-            self.rollout_driver.policy = self.policy_learner.policy
+            self.rollout_driver.policy = self.policy_learner.collect_policy
 
             # log losses, times, and possibly visualise
             self.log_epoch(epoch, discrim_train_stats, sac_train_stats)

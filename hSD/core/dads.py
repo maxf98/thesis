@@ -33,7 +33,7 @@ class DADS(SkillDiscovery):
         s, z, ds_p = self.process_batch(aug_obs)
         history = self.skill_model.train(tf.concat([s, z], axis=-1), ds_p, batch_size=batch_size, epochs=train_steps)
 
-        return {'losses': history.history['loss'], 'accuracy': history.history['accuracy']}
+        return {'loss': history.history['loss'], 'accuracy': history.history['accuracy']}
 
     def train_policy(self, batch_size, train_steps):
         dataset = self.rollout_driver.replay_buffer.as_dataset(sample_batch_size=batch_size, num_steps=2)
@@ -66,25 +66,23 @@ class DADS(SkillDiscovery):
     def compute_dads_reward(self, input_obs, cur_skill, target_obs):
         num_reps = self._prior_samples if self._prior_samples > 0 else self._skill_dim - 1
         input_obs_altz = np.concatenate([input_obs] * num_reps, axis=0)
+        target_obs -= input_obs
         target_obs_altz = np.concatenate([target_obs] * num_reps, axis=0)
 
         alt_skill = self.rollout_driver.skill_prior.sample(input_obs_altz.shape[0])
 
         logp = self.skill_model.log_prob(tf.concat([input_obs, cur_skill], axis=-1), target_obs)
 
-        # denominator may require more memory than that of a GPU, break computation
         logp_altz = self.skill_model.log_prob(tf.concat([input_obs_altz, alt_skill], axis=-1), target_obs_altz)
 
         logp_altz = np.array(np.array_split(logp_altz, num_reps))
 
         # final DADS reward
-        intrinsic_reward = np.log(num_reps + 1) - np.log(1 + np.exp(
-            np.clip(logp_altz - tf.reshape(logp, (1, -1)), -50, 50)).sum(axis=0))
+        intrinsic_reward = np.log(num_reps + 1) - np.log(1 + np.exp(np.clip(logp_altz - tf.reshape(logp, (1, -1)), -50, 50)).sum(axis=0))
 
         return intrinsic_reward, {'logp': logp, 'logp_altz': logp_altz.flatten()}
 
     def log_epoch(self, epoch, discrim_info, rl_info):
-        return
         if self.logger is not None:
             self.logger.log(epoch, discrim_info, rl_info, self.policy_learner.policy, self.skill_model, self.eval_env)
 
