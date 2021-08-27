@@ -43,6 +43,8 @@ def config_subplot(ax, title=None):
     for p in ["left", "right", "top", "bottom"]:
         ax.spines[p].set_visible(False)
 
+    ax.set_aspect('equal', adjustable='box')
+
     if title is not None:
         ax.set_title(title, fontsize=14)
 
@@ -84,16 +86,31 @@ def plot_all_skills(ax, cmap, trajectories, alpha=0.2, linewidth=2):
 def categorical_discrim_heatmap(ax, discriminator):
     P = 50
     points = tf.constant([[i/P, j/P] for i in range(-P, P, 1) for j in range(-P, P, 1)])
-    pred = discriminator.call(points, return_probs=True)
+    pred = discriminator.call(points)
     s, p = tf.reshape(tf.argmax(pred, axis=-1), (2*P, 2*P)), tf.reshape(tf.reduce_max(pred, axis=-1), (2*P, 2*P))
     s, p = s.numpy(), p.numpy()
 
-    cmap = get_cmap(discriminator.latent_dim)
+    cmap = get_cmap(discriminator.output_dim)
     ax.imshow(s, cmap, interpolation='none', alpha=p)
 
     ax.plot([50], [50], marker='o', markersize=8, color='black', zorder=11)
 
     return ax
+
+def cont_diayn_skill_heatmap(ax, discriminator):
+    # technically need one axis for each dimension of the skill model... for now we only visualise the first dimension
+    P = 50
+    points = tf.constant([[i / P, j / P] for i in range(-P, P, 1) for j in range(-P, P, 1)])
+    pred_distr = discriminator.call(points)  # will automatically sample from out_distr for each point
+    s = tf.reshape(pred_distr.mean[0], (2*P, 2*P))
+
+    ax.imshow(s)
+
+    return ax
+
+
+def vis_skill_model(skill_model):
+    pass
 
 
 def vis_saved_policy(ax):

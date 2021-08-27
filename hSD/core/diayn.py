@@ -50,8 +50,8 @@ class DIAYN(SkillDiscovery):
         return s, z
 
     def relabel_ir(self, batch):  # expects 2-time-step traj (as in SAC)
-        obs_l, obs_r = tf.split(batch.observation, [1, 1], 1)  # for some reason this isn't working
-        rl, rr = self.get_reward(obs_l), self.get_reward(obs_r)
+        obs_l, obs_r = tf.split(batch.observation, [1, 1], 1)
+        rl, rr = self.get_reward(obs_l), self.get_reward(obs_r)  # not sure we actually need to compute reward for both time steps...
         ir = tf.stack([rl, rr], axis=1)
 
         relabelled_batch = batch.replace(reward=ir)
@@ -67,10 +67,12 @@ class DIAYN(SkillDiscovery):
     def log_epoch(self, epoch, skill_stats, sac_stats):
         if self.logger is not None:
             self.logger.log(epoch, skill_stats, sac_stats, self.policy_learner.policy, self.skill_model, self.eval_env)
+            self.logger.per_skill_collect_rollouts(epoch, self.policy_learner.collect_policy, self.eval_env)
+
 
     def save(self):
         if self.logger is not None:
-            #self.logger.save_discrim(self.skill_discriminator)
+            #self.logger.save_discrim(self.skill_model)
             #self.logger.save_policy(self.policy_learner.agent.policy)
             #self.logger.save_stats()
             pass

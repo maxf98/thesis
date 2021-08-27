@@ -69,15 +69,18 @@ class DADS(SkillDiscovery):
         target_obs -= input_obs
         target_obs_altz = np.concatenate([target_obs] * num_reps, axis=0)
 
+        """ check this as well... am I sampling enough skills? I think so tbh..."""
         alt_skill = self.rollout_driver.skill_prior.sample(input_obs_altz.shape[0])
 
         logp = self.skill_model.log_prob(tf.concat([input_obs, cur_skill], axis=-1), target_obs)
 
         logp_altz = self.skill_model.log_prob(tf.concat([input_obs_altz, alt_skill], axis=-1), target_obs_altz)
-
         logp_altz = np.array(np.array_split(logp_altz, num_reps))
 
         # final DADS reward
+        """this computation does not make sense to me... logp_altz - logp?
+        I guess the sum does it, but I think it should come before the subtraction
+        debug this..."""
         intrinsic_reward = np.log(num_reps + 1) - np.log(1 + np.exp(np.clip(logp_altz - tf.reshape(logp, (1, -1)), -50, 50)).sum(axis=0))
 
         return intrinsic_reward, {'logp': logp, 'logp_altz': logp_altz.flatten()}

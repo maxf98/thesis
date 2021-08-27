@@ -10,6 +10,7 @@ from core.modules.policy_learners import SACLearner
 from env.point_environment import PointEnv
 from core.diayn import DIAYN
 from core.dads import DADS
+from core.cont_diayn import ContDIAYN
 from core.modules.logger import Logger
 from core.modules import utils
 
@@ -22,8 +23,7 @@ tfd = tensorflow_probability.distributions
 
 @gin.configurable
 def run_experiment(objective, skill_prior, skill_dim, config_path=None):
-    train_env = TFPyEnvironment(PointEnv())
-    eval_env = TFPyEnvironment(PointEnv())
+    train_env, eval_env = init_env()
 
     obs_spec, action_spec, time_step_spec = parse_env_specs(train_env, skill_dim, objective)
 
@@ -37,6 +37,13 @@ def run_experiment(objective, skill_prior, skill_dim, config_path=None):
     agent = init_skill_discovery(objective, train_env, eval_env, driver, skill_model, policy_learner, skill_dim, logger)
 
     train_skill_discovery(agent)
+
+
+@gin.configurable
+def init_env(step_size):
+    train_env = TFPyEnvironment(PointEnv(step_size))
+    eval_env = TFPyEnvironment(PointEnv(step_size))
+    return train_env, eval_env
 
 
 def parse_env_specs(env, skill_dim, objective):
@@ -57,6 +64,7 @@ def parse_skill_prior(skill_dim, skill_prior):
         return tfd.OneHotCategorical(logits=tf.ones(skill_dim), dtype=tf.float32), tf.one_hot(list(range(skill_dim)), skill_dim)
     elif skill_prior == 'cont_uniform':
         vis_skill_set = discretize_continuous_space(-1, 1, 3, skill_dim)
+        #vis_skill_set = [[-1., 1.], [1., 1.], [-1., -1.], [1., -1.]]
         return tfd.Uniform(low=[-1.] * skill_dim, high=[1.] * skill_dim), vis_skill_set
     elif skill_prior == 'gaussian':
         vis_skill_set = discretize_continuous_space(-1, 1, 3, skill_dim)
@@ -65,9 +73,9 @@ def parse_skill_prior(skill_dim, skill_prior):
         raise ValueError("invalid skill prior")
 
 
-def discretize_continuous_space(min, max, num_points, dim):
-    step = (max-min) / num_points
-    skill_axes = [[min + step * x for x in range(num_points + 1)]] * dim
+def discretize_continuous_space(min, max, points_per_axis, dim):
+    step = (max-min) / points_per_axis
+    skill_axes = [[min + step * x for x in range(points_per_axis + 1)]] * dim
     skills = [skill for skill in itertools.product(*skill_axes)]
     return skills
 
@@ -82,11 +90,11 @@ def init_rollout_driver(env, policy, skill_prior, buffer_size=5000, skill_length
 def init_skill_model(objective, skill_prior, obs_dim, skill_dim, hidden_dim=(128, 128), fix_variance=False):
     if objective == "s->z":
         input_dim, output_dim = obs_dim, skill_dim
-        return BaseSkillModel(input_dim, output_dim, skill_type=skill_prior, fc_layer_params=hidden_dim,
-                              fix_variance=fix_variance)
+        return BaseSkillModel(input_dim, output_dim, skill_type=skill_prior, fc_layer_params=hidden_dim, fix_variance=fix_variance)
     elif objective == "sz->s_p":
         input_dim, output_dim = obs_dim + skill_dim, obs_dim
-        return SkillDynamics(input_dim, output_dim, fix_variance=True)
+        return BaseSkillModel(input_dim, output_dim, skill_type=skill_prior, fc_layer_params=hidden_dim, fix_variance=fix_variance)
+        #return SkillDynamics(input_dim, output_dim, fc_layer_params=hidden_dim, fix_variance=True)
     else:
         raise ValueError("invalid objective")
 
@@ -108,7 +116,9 @@ def init_logger(create_logs=True, log_dir='.', create_fig_interval=5, config_pat
 
 def init_skill_discovery(objective, train_env, eval_env, rollout_driver, skill_model, policy_learner, skill_dim, logger):
     if objective == 's->z':
-        return DIAYN(train_env, eval_env, rollout_driver, skill_model, policy_learner, skill_dim, logger)
+        #return DIAYN(train_env, eval_env, rollout_driver, skill_model, policy_learner, skill_dim, logger)
+        # for now we just assume continuous
+        return ContDIAYN(train_env, eval_env, rollout_driver, skill_model, policy_learner, skill_dim, logger)
     elif objective == 'sz->s_p':
         return DADS(train_env, eval_env, rollout_driver, skill_model, policy_learner, skill_dim, logger)
     else:

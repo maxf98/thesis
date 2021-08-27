@@ -6,8 +6,6 @@ import numpy as np
 import tensorflow as tf
 import shutil
 
-from core.modules.rollout_drivers import collect_skill_trajectories
-
 from env import point_env_vis
 
 
@@ -65,6 +63,7 @@ class Logger:
 
             fig.set_size_inches(18.5, 10.5)
             fig.subplots_adjust(wspace=0.2, hspace=0.2)
+            fig.suptitle("Epoch {}".format(epoch), fontsize=16)
 
             save_path = os.path.join(self.vis_dir, "epoch_{}".format(epoch))
             fig.savefig(save_path)
@@ -78,6 +77,23 @@ class Logger:
     def skill_vis(self, ax1, ax2, policy, skill_model, env):
         point_env_vis.skill_vis(ax1, env, policy, self.vis_skill_set, self.num_samples_per_skill, self.skill_length)
         #point_env_vis.categorical_discrim_heatmap(ax2, skill_model)
+        #point_env_vis.cont_diayn_skill_heatmap(ax2, skill_model)
+
+    def per_skill_collect_rollouts(self, epoch, collect_policy, env):
+        if epoch % self.create_fig_interval != 0:
+            return
+
+        # it would be nice if they weren't all in one row, if we did choose more to visualise
+        fig, axes = plt.subplots(nrows=1, ncols=len(self.vis_skill_set), figsize=(8, 8))
+        for i, skill in enumerate(self.vis_skill_set):
+            point_env_vis.skill_vis(axes[i], env, collect_policy, [skill], 10, self.skill_length)
+            axes[i].set(title=skill)
+            axes[i].set_aspect('equal', adjustable='box')
+
+        fig.suptitle("Epoch {}".format(epoch), fontsize=16)
+        save_path = os.path.join(self.vis_dir, "epoch_{} - exploration rollouts".format(epoch))
+        fig.savefig(save_path)
+        plt.close(fig)
 
     def save_stats(self):
         rewards = np.array(self.sac_stats['reward']).flatten()

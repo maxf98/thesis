@@ -172,8 +172,9 @@ class SkillDynamics(SkillModel):
         return x
 
     def apply_distribution(self, x):
-        """for now we assume that the number of components is equal to 4 and the variance is fixed, throw an error otherwise..."""
-
+        """for now we assume that the number of components is greater than 1 and the variance is fixed, throw an error otherwise..."""
+        if not self.fix_variance:
+            raise NotImplementedError()
         x = tfkl.Dense(tfpl.MixtureSameFamily.params_size(self.num_components, self.output_dim))(x)
         scale_diag = [0.5] * self.output_dim
         make_distr_func = lambda t: tfd.MultivariateNormalDiag(loc=t, scale_diag=scale_diag)
