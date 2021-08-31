@@ -7,7 +7,7 @@ import tensorflow_probability
 from core.modules.rollout_drivers import BaseRolloutDriver
 from core.modules.skill_models import BaseSkillModel, SkillDynamics
 from core.modules.policy_learners import SACLearner
-from env.point_environment import PointEnv
+from env import point_environment, skill_environment
 from core.diayn import DIAYN
 from core.dads import DADS
 from core.cont_diayn import ContDIAYN
@@ -15,6 +15,7 @@ from core.modules.logger import Logger
 from core.modules import utils
 
 from tf_agents.environments.tf_py_environment import TFPyEnvironment
+from tf_agents.policies import py_tf_eager_policy
 
 import tensorflow as tf
 
@@ -41,8 +42,17 @@ def run_experiment(objective, skill_prior, skill_dim, config_path=None):
 
 @gin.configurable
 def init_env(step_size):
-    train_env = TFPyEnvironment(PointEnv(step_size))
-    eval_env = TFPyEnvironment(PointEnv(step_size))
+    train_env = point_environment.PointEnv(step_size)
+    eval_env = point_environment.PointEnv(step_size)
+
+    #policy_dir = "logs/diayn/cont/29-08~17-49/policy"
+    #py_policy = py_tf_eager_policy.SavedModelPyTFEagerPolicy(policy_dir, train_env.time_step_spec(), train_env.action_spec())
+
+    #train_env = skill_environment.SkillEnv(train_env, py_policy, 20)
+    #eval_env = skill_environment.SkillEnv(eval_env, py_policy, 20)
+
+    train_env = TFPyEnvironment(train_env)
+    eval_env = TFPyEnvironment(eval_env)
     return train_env, eval_env
 
 
@@ -81,9 +91,9 @@ def discretize_continuous_space(min, max, points_per_axis, dim):
 
 
 @gin.configurable
-def init_rollout_driver(env, policy, skill_prior, buffer_size=5000, skill_length=30, episode_length=30):
+def init_rollout_driver(env, policy, skill_prior, state_norm=False, buffer_size=5000, skill_length=30, episode_length=30):
     return BaseRolloutDriver(env, policy, skill_prior, buffer_size=buffer_size,
-                             skill_length=skill_length, episode_length=episode_length)
+                             skill_length=skill_length, episode_length=episode_length, state_norm=state_norm)
 
 
 @gin.configurable

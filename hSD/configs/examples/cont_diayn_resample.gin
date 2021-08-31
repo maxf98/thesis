@@ -6,7 +6,8 @@ init_env.step_size = 0.05
 
 init_rollout_driver.buffer_size = 1000
 init_rollout_driver.skill_length = 20
-init_rollout_driver.episode_length = 20
+init_rollout_driver.episode_length = 100
+init_rollout_driver.state_norm = False
 
 init_skill_model.hidden_dim = (128, 128)
 init_skill_model.fix_variance = True  # only continuous skill models
@@ -18,7 +19,7 @@ init_policy_learner.reward_scale_factor = 1.0
 
 init_logger.create_logs = True
 init_logger.log_dir = 'logs/diayn/cont'
-init_logger.create_fig_interval = 5
+init_logger.create_fig_interval = 10
 init_logger.skill_length = 20
 init_logger.num_samples_per_skill = 3
 

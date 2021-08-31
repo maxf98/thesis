@@ -8,6 +8,9 @@ import shutil
 
 from env import point_env_vis
 
+from tf_agents.policies.py_tf_eager_policy import PyTFEagerPolicy
+
+
 
 class Logger:
     def __init__(self, log_dir, create_fig_interval, config_path, vis_skill_set, skill_length, num_samples_per_skill):

@@ -16,6 +16,7 @@ tf.compat.v1.enable_v2_behavior()
 class PointEnv(py_environment.PyEnvironment):
 
   def __init__(self, step_size):
+    super(PointEnv, self).__init__()
     self._action_spec = array_spec.BoundedArraySpec(shape=(2,), dtype=np.float32, minimum=-step_size, maximum=step_size, name='action')
     self._observation_spec = array_spec.BoundedArraySpec(shape=(2,), dtype=np.float32, minimum=-1, maximum=1, name='observation')
     self._state = (0., 0.)

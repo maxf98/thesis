@@ -114,7 +114,7 @@ def vis_skill_model(skill_model):
 
 
 def vis_saved_policy(ax):
-    env = tf_py_environment.TFPyEnvironment(point_environment.PointEnv())
+    env = tf_py_environment.TFPyEnvironment(point_environment.PointEnv(step_size=0.05))
     saved_policy = tf.compat.v2.saved_model.load("logs")
     skill_vis(ax, saved_policy, 4, env, 10)
 

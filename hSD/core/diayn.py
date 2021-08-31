@@ -73,6 +73,6 @@ class DIAYN(SkillDiscovery):
     def save(self):
         if self.logger is not None:
             #self.logger.save_discrim(self.skill_model)
-            #self.logger.save_policy(self.policy_learner.agent.policy)
+            self.logger.save_policy(self.policy_learner.policy)
             #self.logger.save_stats()
             pass
