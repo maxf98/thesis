@@ -10,7 +10,7 @@ from tf_agents.policies.random_tf_policy import RandomTFPolicy
 from tf_agents.trajectories import trajectory
 
 from edld.vae_discriminator import VAEDiscriminator
-from skill_discovery import SkillDiscovery
+from core.skill_discovery import SkillDiscovery
 from utils import utils
 import matplotlib.pyplot as plt
 from thesis.hSD.env import point_env_vis

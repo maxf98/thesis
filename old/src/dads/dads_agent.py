@@ -1,14 +1,12 @@
 import tensorflow as tf
 import tensorflow_probability as tfp
 
-import utils
-
 from tf_agents.environments.tf_environment import TFEnvironment
 from tf_agents.agents.tf_agent import TFAgent
 from tf_agents.replay_buffers.replay_buffer import ReplayBuffer
 from tf_agents.trajectories import trajectory
 
-import skill_discovery
+from core import skill_discovery
 import skill_dynamics
 from utils import logger
 from utils import utils

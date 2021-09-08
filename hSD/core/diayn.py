@@ -1,6 +1,7 @@
-from skill_discovery import SkillDiscovery
+from core.skill_discovery import SkillDiscovery
 
 import tensorflow as tf
+import numpy as np
 from tf_agents.environments.tf_environment import TFEnvironment
 
 from core.modules.rollout_drivers import BaseRolloutDriver
@@ -65,14 +66,40 @@ class DIAYN(SkillDiscovery):
         return r
 
     def log_epoch(self, epoch, skill_stats, sac_stats):
+        global_step = tf.compat.v1.train.get_global_step()
         if self.logger is not None:
-            self.logger.log(epoch, skill_stats, sac_stats, self.policy_learner.policy, self.skill_model, self.eval_env)
-            self.logger.per_skill_collect_rollouts(epoch, self.policy_learner.collect_policy, self.eval_env)
+            self.logger.log(epoch, global_step, skill_stats, sac_stats, self.policy_learner.policy, self.skill_model, self.eval_env)
+            #self.logger.per_skill_collect_rollouts(epoch, self.policy_learner.collect_policy, self.eval_env)
 
 
-    def save(self):
-        if self.logger is not None:
-            #self.logger.save_discrim(self.skill_model)
-            self.logger.save_policy(self.policy_learner.policy)
-            #self.logger.save_stats()
-            pass
+class ContDIAYN(DIAYN):
+    def __init__(self,
+                 train_env: TFEnvironment,
+                 eval_env: TFEnvironment,
+                 rollout_driver: BaseRolloutDriver,
+                 skill_model: SkillModel,
+                 policy_learner: PolicyLearner,
+                 skill_dim,
+                 logger=None,
+                 num_prior_samples=100
+                 ):
+        super(DIAYN, self).__init__(train_env, eval_env, rollout_driver, skill_model, policy_learner)
+        self.skill_dim = skill_dim
+        self.logger = logger
+        self.num_prior_samples = num_prior_samples
+
+    def get_reward(self, batch):
+        """perform DADS-like marginalisation of sampled skills in a continuous space"""
+        N = self.num_prior_samples
+        batch = tf.squeeze(batch)
+        s, z = self.split_observation(batch)
+        logp = self.skill_model.log_prob(s, z)
+
+        alts = tf.concat([s] * N, axis=0)
+        altz = self.rollout_driver.skill_prior.sample(alts.shape[0])
+        logp_altz = tf.split(self.skill_model.log_prob(alts, altz), N, axis=0)
+
+        intrinsic_reward = np.log(N + 1) - np.log(
+            1 + np.exp(np.clip(logp_altz - tf.reshape(logp, (1, -1)), -50, 50)).sum(axis=0))
+
+        return intrinsic_reward

@@ -1,5 +1,6 @@
 import numpy as np
 import tensorflow as tf
+import itertools
 import io
 import shutil
 import zipfile
@@ -25,3 +26,10 @@ def aug_time_step(time_step, z):
                        time_step.reward,
                        time_step.discount,
                        tf.concat([time_step.observation, tf.reshape(z, (1, -1))], axis=-1))
+
+
+def discretize_continuous_space(min, max, points_per_axis, dim):
+    step = (max-min) / points_per_axis
+    skill_axes = [[min + step * x for x in range(points_per_axis + 1)]] * dim
+    skills = [skill for skill in itertools.product(*skill_axes)]
+    return skills

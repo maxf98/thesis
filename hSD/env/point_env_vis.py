@@ -2,8 +2,18 @@ import matplotlib.pyplot as plt
 
 import tensorflow as tf
 from env import point_environment
+from env.maze import maze_env
 from tf_agents.environments import tf_py_environment
 from core.modules.rollout_drivers import collect_skill_trajectories
+
+
+ENV_LIMS = dict(
+    square_a=dict(xlim=(-0.55, 4.55), ylim=(-4.55, 0.55), x=(-0.5, 4.5), y=(-4.5, 0.5)),
+    square_bottleneck=dict(xlim=(-0.55, 9.55), ylim=(-0.55, 9.55), x=(-0.5, 9.5), y=(-0.5, 9.5)),
+    square_corridor=dict(xlim=(-5.55, 5.55), ylim=(-0.55, 0.55), x=(-5.5, 5.5), y=(-0.5, 0.5)),
+    square_corridor2=dict(xlim=(-5.55, 5.55), ylim=(-0.55, 0.55), x=(-5.5, 5.5), y=(-0.5, 0.5)),
+    square_tree=dict(xlim=(-6.55, 6.55), ylim=(-6.55, 0.55), x=(-6.5, 6.5), y=(-6.5, 0.5))
+)
 
 
 def get_cmap(num_skills):
@@ -35,18 +45,25 @@ def plot_trajectories(batch):
     plt.show()
 
 
-def config_subplot(ax, title=None):
-    ax.set_xlim(-1, 1)
-    ax.set_ylim(-1, 1)
-    ax.get_xaxis().set_visible(False)
-    ax.get_yaxis().set_visible(False)
-    for p in ["left", "right", "top", "bottom"]:
-        ax.spines[p].set_visible(False)
-
-    ax.set_aspect('equal', adjustable='box')
-
+def config_subplot(ax, maze_type=None, extra_lim=0., title=None):
     if title is not None:
         ax.set_title(title, fontsize=14)
+
+    if maze_type is not None:
+        env = maze_env.MazeEnv(maze_type=maze_type)
+        env.maze.plot(ax=ax)
+
+        env_config = ENV_LIMS[maze_type]
+        ax.set_xlim(env_config["xlim"][0] - extra_lim, env_config["xlim"][1] + extra_lim)
+        ax.set_ylim(env_config["ylim"][0] - extra_lim, env_config["ylim"][1] + extra_lim)
+    else:  # default, point_env_limits
+        ax.set_xlim(-1, 1)
+        ax.set_ylim(-1, 1)
+
+    #ax.get_xaxis().set_visible(False)
+    #ax.get_yaxis().set_visible(False)
+    for p in ["left", "right", "top", "bottom"]:
+        ax.spines[p].set_visible(False)
 
 
 def discretize_continuous_space(min, max, num_points):
@@ -59,11 +76,13 @@ def one_hots_for_num_skills(num_skills):
 
 
 def skill_vis(ax, env, policy, skills, rollouts_per_skill, skill_length):
-    # collect rollouts w/ policy (store unaugmented observations...) -> visualise rollouts ->
+    # collect rollouts w/ policy (store unaugmented observations...) -> visualise rollouts
     skill_trajectories = collect_skill_trajectories(env, policy, skills, rollouts_per_skill, skill_length)
 
     cmap = get_cmap(len(skills))
     plot_all_skills(ax, cmap, skill_trajectories, alpha=0.2)
+
+    config_subplot(ax,title="Skills")
 
 
 def plot_all_skills(ax, cmap, trajectories, alpha=0.2, linewidth=2):
@@ -76,9 +95,7 @@ def plot_all_skills(ax, cmap, trajectories, alpha=0.2, linewidth=2):
                     linewidth=linewidth, zorder=10)
 
     # mark starting point
-    ax.plot([0], [0], marker='o', markersize=8, color='black', zorder=11)
-
-    config_subplot(ax, title="Skills")
+    ax.plot(trajectories[0][0][0][0], trajectories[0][0][0][1], marker='o', markersize=8, color='black', zorder=11)
 
     return ax
 

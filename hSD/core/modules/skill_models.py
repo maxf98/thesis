@@ -30,8 +30,7 @@ class SkillModel(ABC):
 
 """
 Base probabilistic skill model...
-DADS implements a mixture of experts model, we can do that too still, but for point environments this should suffice
-anyway...
+DADS implements a mixture of experts model, we can do that too, but for point environments this should suffice...
 """
 class BaseSkillModel(SkillModel):
     def __init__(
@@ -77,7 +76,7 @@ class BaseSkillModel(SkillModel):
                 x = tfpl.DistributionLambda(lambda t: tfd.MultivariateNormalDiag(loc=t, scale_diag=[0.1]*self.output_dim))(x)
             else:
                 x = tfkl.Dense(tfpl.IndependentNormal.params_size(self.output_dim))(x)  # top half learns means, bottom half learns variance
-                x = tfpl.IndependentNormal(self.output_dim)(x)  # no variance clipping yet
+                x = tfpl.IndependentNormal(self.output_dim)(x)  # no variance clipping yet, we generally fix variance anyway...
                 """
                 x = tfkl.Dense(2 * self.output_dim)(x)
                 x = tfpl.DistributionLambda(lambda t: tfd.MultivariateNormalDiag(
@@ -87,6 +86,8 @@ class BaseSkillModel(SkillModel):
                 """
             if self.skill_type == 'cont_uniform':
                 # squash posterior to the right range of [-1, 1]
+                # I think they use this for actor network as well... TanhProjectionNetwork
+                # would be more elegant to just use this!
                 bijector_chain = tfp.bijectors.Chain([tanh_bijector_stable.Tanh()])  # not really sure what this is tbh
                 x = tfpl.DistributionLambda(lambda t: tfd.TransformedDistribution(
                     distribution=t, bijector=bijector_chain))(x)
@@ -119,8 +120,15 @@ class BaseSkillModel(SkillModel):
         pred_distr = self.model(x)
         return pred_distr.log_prob(y)
 
-    def save(self, log_dir):
-        self.model.save(log_dir)
+    """
+    I don't think these will work right now, I think I may have to do it with plain weight initialisation
+    this should be fine, and easy to implement with numpy arrays
+    """
+    def save(self, dir):
+        self.model.save(dir)
+
+    def restore_model(self, dir):
+        self.model = tf.keras.models.load_model(dir)
 
 
 """implements mixture of experts skill dynamics model used in DADS"""

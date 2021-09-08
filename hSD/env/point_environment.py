@@ -15,10 +15,13 @@ tf.compat.v1.enable_v2_behavior()
 
 class PointEnv(py_environment.PyEnvironment):
 
-  def __init__(self, step_size):
+  def __init__(self, step_size=0.1, box_size=1):
     super(PointEnv, self).__init__()
+    assert(step_size > 0 and box_size > 0)
+
+    self.box_size, self.step_size = box_size, step_size
     self._action_spec = array_spec.BoundedArraySpec(shape=(2,), dtype=np.float32, minimum=-step_size, maximum=step_size, name='action')
-    self._observation_spec = array_spec.BoundedArraySpec(shape=(2,), dtype=np.float32, minimum=-1, maximum=1, name='observation')
+    self._observation_spec = array_spec.BoundedArraySpec(shape=(2,), dtype=np.float32, minimum=-box_size, maximum=box_size, name='observation')
     self._state = (0., 0.)
     self._step_count = 0
     self._episode_ended = False
@@ -43,13 +46,13 @@ class PointEnv(py_environment.PyEnvironment):
       return self.reset()
 
     x_t, y_t = action.flatten()
-    x = self._clip_to_bounds(self._state[0] + x_t, -1, 1)
-    y = self._clip_to_bounds(self._state[1] + y_t, -1, 1)
+    x = self._clip_to_bounds(self._state[0] + x_t, -self.box_size, self.box_size)
+    y = self._clip_to_bounds(self._state[1] + y_t, -self.box_size, self.box_size)
     self._state = (x, y)
 
     self._step_count += 1
 
-    if self._step_count > 100:
+    if self._step_count > 1000:
       self._episode_ended = True
       return ts.termination(np.array(self._state, dtype=np.float32), reward=0)
     else:

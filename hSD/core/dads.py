@@ -1,4 +1,4 @@
-from skill_discovery import SkillDiscovery
+from core.skill_discovery import SkillDiscovery
 
 import tensorflow as tf
 import numpy as np
@@ -88,10 +88,3 @@ class DADS(SkillDiscovery):
     def log_epoch(self, epoch, discrim_info, rl_info):
         if self.logger is not None:
             self.logger.log(epoch, discrim_info, rl_info, self.policy_learner.policy, self.skill_model, self.eval_env)
-
-    def save(self):
-        if self.logger is not None:
-            #self.logger.save_discrim(self.skill_discriminator)
-            #self.logger.save_policy(self.policy_learner.agent.policy)
-            #self.logger.save_stats()
-            pass

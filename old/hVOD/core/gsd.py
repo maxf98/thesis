@@ -6,7 +6,7 @@ from tf_agents.agents.tf_agent import TFAgent
 from tf_agents.replay_buffers.replay_buffer import ReplayBuffer
 from tf_agents.trajectories import trajectory
 
-from skill_discovery import SkillDiscovery
+from core.skill_discovery import SkillDiscovery
 from core.discriminator import Discriminator
 from core.modules import utils, logger as lg
 
