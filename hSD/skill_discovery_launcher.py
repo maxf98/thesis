@@ -38,7 +38,7 @@ def perform_skill_discovery(train_env, eval_env, skill_length, objective, skill_
                                    train_step=tf.compat.v1.train.get_global_step(),
                                    skill_model=skill_model)
     """
-    agent = init_skill_discovery(objective, train_env, eval_env, driver, skill_model, policy_learner, skill_dim, logger)
+    agent = init_skill_discovery(objective, skill_prior, train_env, eval_env, driver, skill_model, policy_learner, skill_dim, logger)
 
     return train_skill_discovery(agent)
 
@@ -103,7 +103,7 @@ def init_skill_model(objective, skill_prior, obs_dim, skill_dim, hidden_dim=(128
 
 
 @gin.configurable
-def init_policy_learner(obs_spec, action_spec, time_step_spec, rl_alg='SAC', fc_layer_params=(128, 128), target_entropy=None, reward_scale_factor=10.0):
+def init_policy_learner(obs_spec, action_spec, time_step_spec, rl_alg='SAC', fc_layer_params=(128, 128), target_entropy=None, reward_scale_factor=10.0, alpha_loss_weight=1.0):
     """enable other RL algorithms than SAC, or maybe just using a policy"""
     if rl_alg == 'SAC':
         return SACLearner(obs_spec,
@@ -111,7 +111,8 @@ def init_policy_learner(obs_spec, action_spec, time_step_spec, rl_alg='SAC', fc_
                           time_step_spec,
                           network_fc_params=fc_layer_params,
                           target_entropy=target_entropy,
-                          reward_scale_factor=reward_scale_factor)
+                          reward_scale_factor=reward_scale_factor,
+                          alpha_loss_weight=alpha_loss_weight)
 
 
 @gin.configurable

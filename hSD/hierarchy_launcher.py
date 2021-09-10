@@ -8,7 +8,6 @@ import experiment_logger
 
 from env import point_environment, skill_environment
 from env.maze import maze_env
-from core.modules.logger import Logger
 from tf_agents.environments import py_environment, tf_environment, tf_py_environment, suite_gym
 
 from tf_agents.policies import py_tf_eager_policy

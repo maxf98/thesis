@@ -37,7 +37,8 @@ class SACLearner(PolicyLearner):
                  time_step_spec,
                  network_fc_params=(128, 128),
                  target_entropy=None,
-                 reward_scale_factor=10.0
+                 reward_scale_factor=1.0,
+                 alpha_loss_weight=1.0
                  ):
         super(SACLearner, self).__init__(obs_spec, action_spec, time_step_spec)
         """
@@ -48,8 +49,8 @@ class SACLearner(PolicyLearner):
         self.learning_rate = 3e-4
         self.target_update_tau = 0.005
         self.target_update_period = 1
-        self.gamma = 0.99
-        self.alpha_loss_weight = 1.0
+        self.gamma = 1.0
+        self.alpha_loss_weight = alpha_loss_weight
         self.reward_scale_factor = reward_scale_factor
         self.target_entropy = target_entropy
         self.agent = self.initialise_sac_agent()
