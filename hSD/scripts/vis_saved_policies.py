@@ -98,4 +98,4 @@ def parse_config_file(dir):
 
 
 if __name__=="__main__":
-    hierarchy_vis("../logs/diayn/hierarchy/anotha-test")
+    hierarchy_vis("../logs/diayn/thesis/semi-successful/fixed-entropy-10")
