@@ -30,7 +30,8 @@ def hierarchy_vis(experiment_dir):
     time_step_spec = ts.time_step_spec(utils.aug_obs_spec(envs[0].observation_spec(), base_env_obs_dim + skill_dim))
 
     policies = []
-    skills = utils.discretize_continuous_space(-1, 1, 3, 2)
+    # skills = utils.discretize_continuous_space(-1, 1, 3, 2)
+    skills = tf.one_hot(list(range(skill_dim)), skill_dim)
 
     num_layers = int(config["num_layers"])
 
@@ -98,4 +99,4 @@ def parse_config_file(dir):
 
 
 if __name__=="__main__":
-    hierarchy_vis("../logs/diayn/thesis/semi-successful/fixed-entropy-10")
+    hierarchy_vis("../logs/diayn/thesis/cdiayn")

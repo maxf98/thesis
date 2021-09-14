@@ -57,11 +57,11 @@ def config_subplot(ax, maze_type=None, extra_lim=0., title=None):
         ax.set_xlim(env_config["xlim"][0] - extra_lim, env_config["xlim"][1] + extra_lim)
         ax.set_ylim(env_config["ylim"][0] - extra_lim, env_config["ylim"][1] + extra_lim)
     else:  # default, point_env_limits
-        ax.set_xlim(0)
-        ax.set_ylim(0)
+        ax.set_xlim(-1, 1)
+        ax.set_ylim(-1, 1)
 
-    ax.get_xaxis().set_visible(False)
-    ax.get_yaxis().set_visible(False)
+    #ax.get_xaxis().set_visible(False)
+    #ax.get_yaxis().set_visible(False)
     #for p in ["left", "right", "top", "bottom"]:
     #    ax.spines[p].set_visible(False)
 

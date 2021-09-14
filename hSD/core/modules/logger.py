@@ -7,6 +7,7 @@ from tf_agents.utils import common
 
 from env import point_env_vis
 
+from tf_agents.policies import policy_saver
 
 #TODO: make train statistics depend on global step, not data length... this way we can pick up where we left off!
 
@@ -74,6 +75,8 @@ class Logger:
             fig.savefig(save_path)
             plt.close(fig)
 
+            self.save_policy(policy, epoch)
+
     def skill_vis(self, ax1, ax2, policy, skill_model, env):
         point_env_vis.skill_vis(ax1, env, policy, self.vis_skill_set, self.num_samples_per_skill, self.skill_length)
         #point_env_vis.categorical_discrim_heatmap(ax2, skill_model)
@@ -117,3 +120,8 @@ class Logger:
 
         self.checkpointer = checkpointer
         checkpointer.initialize_or_restore()
+
+    def save_policy(self, policy, epoch):
+        policy_dir = os.path.join(self.log_dir, f"policy_{epoch}")
+        tf_policy_saver = policy_saver.PolicySaver(policy)
+        tf_policy_saver.save(policy_dir)
