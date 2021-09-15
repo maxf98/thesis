@@ -30,8 +30,8 @@ def hierarchy_vis(experiment_dir):
     time_step_spec = ts.time_step_spec(utils.aug_obs_spec(envs[0].observation_spec(), base_env_obs_dim + skill_dim))
 
     policies = []
-    # skills = utils.discretize_continuous_space(-1, 1, 3, 2)
-    skills = tf.one_hot(list(range(skill_dim)), skill_dim)
+    skills = utils.discretize_continuous_space(-1, 1, 3, 2)
+    # skills = tf.one_hot(list(range(skill_dim)), skill_dim)
 
     num_layers = int(config["num_layers"])
 
@@ -64,7 +64,7 @@ def hierarchy_vis(experiment_dir):
 
 def get_env(name): # copied from experiment launcher
     if name == "point_env":
-        return point_environment.PointEnv(step_size=0.2, box_size=5)
+        return point_environment.PointEnv(step_size=0.1, box_size=1)
     elif name.startswith("maze"):
         maze_type = name.split("_", 1)[1]
         return maze_env.MazeEnv(maze_type=maze_type)

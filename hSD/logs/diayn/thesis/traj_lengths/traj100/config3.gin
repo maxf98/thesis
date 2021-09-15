@@ -1,7 +1,7 @@
 hierarchical_skill_discovery.num_layers = 1
-hierarchical_skill_discovery.skill_lengths = (25,)
+hierarchical_skill_discovery.skill_lengths = (100,)
 
-init_experiment_logger.log_dir = "logs/diayn/thesis/traj30"
+init_experiment_logger.log_dir = "logs/diayn/thesis/traj100"
 
 get_base_env.env_name = "point_env"
 get_base_env.point_env_step_size = 0.01
@@ -11,8 +11,8 @@ perform_skill_discovery.objective = 's->z'
 perform_skill_discovery.skill_prior = 'cont_uniform'
 perform_skill_discovery.skill_dim = 2
 
-init_rollout_driver.buffer_size = 1000
-init_rollout_driver.episode_length = 25
+init_rollout_driver.buffer_size = 2000
+init_rollout_driver.episode_length = 100
 init_rollout_driver.state_norm = True
 
 init_skill_model.hidden_dim = (128, 128)
@@ -28,8 +28,8 @@ init_logger.create_fig_interval = 10
 init_logger.num_samples_per_skill = 3
 
 train_skill_discovery.num_epochs=200
-train_skill_discovery.initial_collect_steps=500
-train_skill_discovery.collect_steps_per_epoch=500
+train_skill_discovery.initial_collect_steps=2000
+train_skill_discovery.collect_steps_per_epoch=2000
 train_skill_discovery.train_batch_size=64
 train_skill_discovery.skill_model_train_steps=64
 train_skill_discovery.policy_learner_train_steps=128
