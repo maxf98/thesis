@@ -109,7 +109,7 @@ def vis_run():
     discrim_acc = np.load(os.path.join(dir, "0/vis/discrim_acc.npy"))
     ir = np.load(os.path.join(dir, "0/vis/intrinsic_rewards.npy"))
 
-    alpha = [(i + 100)/1000 for i in range(len(ir))]
+    alpha = [1000/(i + 100) for i in range(len(ir))]
 
     fig = plt.figure(constrained_layout=True)
     gs = fig.add_gridspec(2, 3, height_ratios=[2, 1])
