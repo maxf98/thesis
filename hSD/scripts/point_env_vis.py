@@ -60,8 +60,8 @@ def config_subplot(ax, maze_type=None, extra_lim=0., title=None):
 
         ax.set_xlim(-1, 1)
         ax.set_ylim(-1, 1)
-        ax.set_xticks([-1., 0., 1.])
-        ax.set_yticks([-1., 0., 1.])
+        #ax.set_xticks([-1., 0., 1.])
+        #ax.set_yticks([-1., 0., 1.])
 
     #ax.get_xaxis().set_visible(False)
     #ax.get_yaxis().set_visible(False)

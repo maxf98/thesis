@@ -42,16 +42,17 @@ def compare_cont_discrete_diayn():
     plt.show()
 
 
-def vis_saved_policy(ax, policy_dir, cont=True, title=None):
+def vis_saved_policy(ax, policy_dir, cont=True, title=None, env=None, skill_length=25):
     policy = tf.compat.v2.saved_model.load(policy_dir)
-    env = TFPyEnvironment(point_environment.PointEnv(step_size=0.1, box_size=1))
+    if env is None:
+        env = TFPyEnvironment(point_environment.PointEnv(step_size=0.1, box_size=1))
     if cont:
         skills = utils.discretize_continuous_space(-1, 1, 3, 2)
     else:
         NUM_SKILLS = 8
         skills = tf.one_hot(list(range(NUM_SKILLS)), NUM_SKILLS)
 
-    point_env_vis.skill_vis(ax, env, policy, skills, 3, skill_length=25)
+    point_env_vis.skill_vis(ax, env, policy, skills, 3, skill_length=skill_length)
 
     if title is not None:
         ax.set(title=title)
@@ -133,11 +134,27 @@ def vis_run():
     #plt.tight_layout()
     plt.show()
 
+def vis_out_of_distribution_skills():
+    # just increase size of point environment and shift start-state to (-1, 0)
+    policy_dir = "../logs/diayn/thesis/entropy/cdiayn-1/policies/policy_0"
+    env = TFPyEnvironment(point_environment.PointEnv(step_size=0.1, box_size=1))
+
+    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(5, 5))
+    vis_saved_policy(ax1, policy_dir, cont=True, title="start=(0,0)", env=env, skill_length=20)
+
+    env = point_environment.PointEnv(step_size=0.1, box_size=1)
+    env.set_start_state((-1, 1))
+    env = TFPyEnvironment(env)
+
+    vis_saved_policy(ax2, policy_dir, cont=True, title="start=(-1,0)", env=env, skill_length=20)
+
+    plt.show()
+
 
 if __name__ == '__main__':
     #compare_cont_discrete_diayn()
     """
-    policy_dir = "../logs/diayn/thesis/entropy/cdiayn-5/policies/policy_0"
+    policy_dir = "../logs/diayn/thesis/entropy/cdiayn-1/policies/policy_0"
 
     fig, ax = plt.subplots(1, 1, figsize=(5, 5))
     vis_saved_policy(ax, policy_dir, cont=True, title="Hello")
@@ -147,4 +164,6 @@ if __name__ == '__main__':
 
     #vis_local_optima()
 
-    vis_run()
+    #vis_run()
+
+    vis_out_of_distribution_skills()

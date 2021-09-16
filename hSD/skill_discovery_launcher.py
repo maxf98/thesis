@@ -21,7 +21,7 @@ def initialise_skill_discovery_agent(train_env, eval_env, skill_length, objectiv
     obs_spec, action_spec, time_step_spec = parse_env_specs(train_env, skill_dim, objective)
 
     skill_prior_distribution, vis_skill_set = parse_skill_prior(skill_dim, skill_prior)
-    logger = init_logger(log_dir=log_dir, vis_skill_set=vis_skill_set)
+    logger = init_logger(log_dir=log_dir, skill_length=skill_length, vis_skill_set=vis_skill_set)
 
     policy_learner = init_policy_learner(obs_spec, action_spec, time_step_spec)
     driver = init_rollout_driver(train_env, policy_learner.agent.collect_policy, skill_prior_distribution, skill_length=skill_length)

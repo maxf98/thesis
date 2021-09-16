@@ -20,9 +20,10 @@ class PointEnv(py_environment.PyEnvironment):
     assert(step_size > 0 and box_size > 0)
 
     self.box_size, self.step_size = box_size, step_size
+    self.start_state = 0., 0.
     self._action_spec = array_spec.BoundedArraySpec(shape=(2,), dtype=np.float32, minimum=-step_size, maximum=step_size, name='action')
     self._observation_spec = array_spec.BoundedArraySpec(shape=(2,), dtype=np.float32, minimum=-box_size, maximum=box_size, name='observation')
-    self._state = (0., 0.)
+    self._state = self.start_state
     self._step_count = 0
     self._episode_ended = False
 
@@ -33,7 +34,7 @@ class PointEnv(py_environment.PyEnvironment):
     return self._observation_spec
 
   def _reset(self):
-    self._state = 0., 0.
+    self._state = self.start_state
     self._step_count = 0
     self._episode_ended = False
     return ts.restart(np.array(self._state, dtype=np.float32))
@@ -57,3 +58,7 @@ class PointEnv(py_environment.PyEnvironment):
       return ts.termination(np.array(self._state, dtype=np.float32), reward=0)
     else:
       return ts.transition(np.array(self._state, dtype=np.float32), reward=0)
+
+  def set_start_state(self, state):
+    self.start_state = state
+    self.reset()

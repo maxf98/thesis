@@ -20,6 +20,7 @@ class Logger:
         self.vis_dir = os.path.join(self.log_dir, "vis")
         self.policies_dir = os.path.join(self.log_dir, "policies")
         self.skill_weights_dir = os.path.join(self.log_dir, "skill_model_weights")
+        self.stats_dir = os.path.join(self.log_dir, "stats")
 
         self.vis_skill_set = vis_skill_set
         self.skill_length = skill_length
@@ -40,6 +41,7 @@ class Logger:
         os.mkdir(self.vis_dir)
         os.mkdir(self.policies_dir)
         os.mkdir(self.skill_weights_dir)
+        os.mkdir(self.stats_dir)
 
     def log(self, epoch, global_step, skill_stats, sac_stats, policy, skill_model, env):
         if self.checkpointer is not None:
@@ -144,6 +146,6 @@ class Logger:
         discrim_losses = np.array(self.skill_model_stats['loss']).flatten()
         discrim_acc = np.array(self.skill_model_stats['accuracy']).flatten()
 
-        np.save(os.path.join(self.vis_dir, "intrinsic_rewards"), rewards)
-        np.save(os.path.join(self.vis_dir, "discrim_loss"), discrim_losses)
-        np.save(os.path.join(self.vis_dir, "discrim_acc"), discrim_acc)
+        np.save(os.path.join(self.stats_dir, "intrinsic_rewards"), rewards)
+        np.save(os.path.join(self.stats_dir, "discrim_loss"), discrim_losses)
+        np.save(os.path.join(self.stats_dir, "discrim_acc"), discrim_acc)
