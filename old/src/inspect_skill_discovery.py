@@ -1,4 +1,4 @@
-from thesis.hSD.env import point_env_vis
+from scripts import point_env_vis
 from tensorflow import keras
 import matplotlib.pyplot as plt
 import tensorflow_probability as tfp

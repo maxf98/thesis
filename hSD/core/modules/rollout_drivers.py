@@ -84,20 +84,4 @@ class BaseRolloutDriver(RolloutDriver):
                            tf.concat([obs, tf.reshape(skill, (1, -1))], axis=-1))
 
 
-def collect_skill_trajectories(env, policy, skills, rollouts_per_skill, skill_length):
-    trajectories = [[] for _ in range(len(skills))]
-
-    for i in range(len(skills)):
-        for si in range(rollouts_per_skill):
-            time_step = env.reset()
-            cur_traj = []  # only collects states
-            for ti in range(skill_length):
-                cur_traj.append(time_step.observation.numpy().flatten().tolist())
-                aug_time_step = utils.aug_time_step(time_step, skills[i])
-                action_step = policy.action(aug_time_step)
-                time_step = env.step(action_step.action)
-
-            trajectories[i].append(cur_traj)
-
-    return trajectories
 

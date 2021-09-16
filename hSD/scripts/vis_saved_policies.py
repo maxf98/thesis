@@ -1,15 +1,14 @@
 import os
-import numpy as np
 import tensorflow as tf
 import matplotlib.pyplot as plt
 
 from env.maze import maze_env
-from env import point_environment, point_env_vis, skill_environment
+from env import point_environment, skill_environment
+from scripts import point_env_vis
 
 from tf_agents.policies.py_tf_eager_policy import SavedModelPyTFEagerPolicy
 from tf_agents.policies.random_tf_policy import RandomTFPolicy
 from tf_agents.trajectories import time_step as ts
-from tf_agents.specs import BoundedArraySpec
 from tf_agents.environments.tf_py_environment import TFPyEnvironment
 
 
@@ -30,8 +29,8 @@ def hierarchy_vis(experiment_dir):
     time_step_spec = ts.time_step_spec(utils.aug_obs_spec(envs[0].observation_spec(), base_env_obs_dim + skill_dim))
 
     policies = []
-    skills = utils.discretize_continuous_space(-1, 1, 3, 2)
-    # skills = tf.one_hot(list(range(skill_dim)), skill_dim)
+    # skills = utils.discretize_continuous_space(-1, 1, 3, 2)
+    skills = tf.one_hot(list(range(skill_dim)), skill_dim)
 
     num_layers = int(config["num_layers"])
 
@@ -99,4 +98,4 @@ def parse_config_file(dir):
 
 
 if __name__=="__main__":
-    hierarchy_vis("../logs/diayn/thesis/cdiayn")
+    hierarchy_vis("../logs/diayn/thesis/diayn")

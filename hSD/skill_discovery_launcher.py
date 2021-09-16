@@ -17,30 +17,21 @@ tfd = tensorflow_probability.distributions
 
 
 @gin.configurable
-def perform_skill_discovery(train_env, eval_env, skill_length, objective, skill_prior, skill_dim, log_dir):
+def initialise_skill_discovery_agent(train_env, eval_env, skill_length, objective, skill_prior, skill_dim, log_dir):
     obs_spec, action_spec, time_step_spec = parse_env_specs(train_env, skill_dim, objective)
 
-    logger = init_logger(log_dir=log_dir)
-
     skill_prior_distribution, vis_skill_set = parse_skill_prior(skill_dim, skill_prior)
-    logger.vis_skill_set = vis_skill_set
+    logger = init_logger(log_dir=log_dir, vis_skill_set=vis_skill_set)
 
     policy_learner = init_policy_learner(obs_spec, action_spec, time_step_spec)
     driver = init_rollout_driver(train_env, policy_learner.agent.collect_policy, skill_prior_distribution, skill_length=skill_length)
     skill_model = init_skill_model(objective, skill_prior, train_env.observation_spec().shape[0], skill_dim)
 
-    # if there is a checkpointer already, this should restore the experiment state...
-    # checkpointer expected in layer_log_dir/checkpointer
-    # in this case, there should also be skill_model weights that we can copy somehow, optimiser state will be omitted
-    # this, we will still need to figure out...
-    """
-    logger.initialise_checkpointer(agent=policy_learner.agent, replay_buffer=driver.replay_buffer,
-                                   train_step=tf.compat.v1.train.get_global_step(),
-                                   skill_model=skill_model)
-    """
     agent = init_skill_discovery(objective, skill_prior, train_env, eval_env, driver, skill_model, policy_learner, skill_dim, logger)
 
-    return train_skill_discovery(agent)
+    logger.initialize_or_restore(agent)
+
+    return agent
 
 
 def parse_env_specs(env, skill_dim, objective):
@@ -138,16 +129,6 @@ def init_skill_discovery(objective, skill_prior, train_env, eval_env, rollout_dr
         raise ValueError("invalid objective")
 
 
-@gin.configurable
-def train_skill_discovery(sd_agent, num_epochs=100, initial_collect_steps=5000, collect_steps_per_epoch=2000, train_batch_size=32, skill_model_train_steps=4, policy_learner_train_steps=128):
-    return sd_agent.train(num_epochs,
-                          initial_collect_steps,
-                          collect_steps_per_epoch,
-                          train_batch_size,
-                          skill_model_train_steps,
-                          policy_learner_train_steps)
-
-
 if __name__ == '__main__':
     config_root_dir = "configs/run-configs"
     configs = os.listdir(config_root_dir)
@@ -156,5 +137,3 @@ if __name__ == '__main__':
     for config in configs:
         config_path = os.path.join(config_root_dir, config)
         gin.parse_config_file(config_path)
-
-        perform_skill_discovery()

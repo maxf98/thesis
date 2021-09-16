@@ -13,7 +13,7 @@ from edld.vae_discriminator import VAEDiscriminator
 from core.skill_discovery import SkillDiscovery
 from utils import utils
 import matplotlib.pyplot as plt
-from thesis.hSD.env import point_env_vis
+from scripts import point_env_vis
 
 """
 considerations:

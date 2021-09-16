@@ -35,10 +35,12 @@ def hierarchical_skill_discovery(num_layers: int, skill_lengths, config_path):
         skill_length = skill_lengths[i]
 
         # perform skill discovery on the current (wrapped) environment
-        policy, skill_model = skill_discovery_launcher.perform_skill_discovery(tf_py_environment.TFPyEnvironment(train_env),
+        agent = skill_discovery_launcher.initialise_skill_discovery_agent(tf_py_environment.TFPyEnvironment(train_env),
                                                       tf_py_environment.TFPyEnvironment(eval_env),
                                                       skill_length=skill_length,
                                                       log_dir=logger.get_layer_log_dir(i))
+
+        policy, skill_model = agent.train()
 
         # embed learned skills in environment with SkillEnv
         py_policy = py_tf_eager_policy.PyTFEagerPolicy(policy)  # convert tf policy to py policy for skill wrapper
@@ -47,8 +49,6 @@ def hierarchical_skill_discovery(num_layers: int, skill_lengths, config_path):
         #keep cached for now, not really sure what for exactly...
         policies.append(policy)
         skill_models.append(skill_model)
-
-        logger.save_policy(policy, i)
 
     return policies, skill_models
 

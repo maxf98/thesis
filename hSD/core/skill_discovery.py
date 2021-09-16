@@ -3,6 +3,7 @@ import gin
 
 from tqdm import tqdm
 import gtimer as gt
+import tensorflow as tf
 from tf_agents.environments.tf_environment import TFEnvironment
 
 from core.modules.rollout_drivers import RolloutDriver
@@ -47,7 +48,7 @@ class SkillDiscovery(ABC):
               collect_steps_per_epoch,
               batch_size,
               skill_model_train_steps,
-              rl_train_steps
+              policy_learner_train_steps
               ):
 
         for epoch in range(1, num_epochs + 1):
@@ -64,7 +65,7 @@ class SkillDiscovery(ABC):
 
             # train rl_agent to optimize skills -- LEARN
             print("Train policy")
-            sac_train_stats = self.train_policy(batch_size, rl_train_steps)
+            sac_train_stats = self.train_policy(batch_size, policy_learner_train_steps)
             gt.stamp("rl training", unique=False)
 
             # update exploration/collect policy

@@ -1,11 +1,11 @@
 import os
-from datetime import datetime
 import matplotlib.pyplot as plt
 import numpy as np
+import tensorflow as tf
 
 from tf_agents.utils import common
 
-from env import point_env_vis
+from scripts import point_env_vis
 
 from tf_agents.policies import policy_saver
 
@@ -17,6 +17,9 @@ class Logger:
         self.skill_model_stats = {'loss': [], 'accuracy': []}
 
         self.log_dir = log_dir
+        self.vis_dir = os.path.join(self.log_dir, "vis")
+        self.policies_dir = os.path.join(self.log_dir, "policies")
+        self.skill_weights_dir = os.path.join(self.log_dir, "skill_model_weights")
 
         self.vis_skill_set = vis_skill_set
         self.skill_length = skill_length
@@ -24,18 +27,19 @@ class Logger:
 
         self.checkpointer = None
 
-        # creates a directory inside the existing one, not a great way to handle this...
-        if not os.path.exists(self.log_dir):
-            os.makedirs(self.log_dir)
-        else:
-            date = datetime.now()
-            dt_string = date.strftime("%d-%m~%H-%M")
-            self.log_dir = os.path.join(log_dir, dt_string)
-            os.mkdir(self.log_dir)
-
-        self.vis_dir = os.path.join(self.log_dir, "vis")
-        os.mkdir(self.vis_dir)
         self.create_fig_interval = create_fig_interval
+
+    def initialize_or_restore(self, sd_agent):
+        if not os.path.exists(self.log_dir):
+            self.make_experiment_dirs()
+        else:
+            self.restore_experiment(sd_agent)
+
+    def make_experiment_dirs(self):
+        os.makedirs(self.log_dir)
+        os.mkdir(self.vis_dir)
+        os.mkdir(self.policies_dir)
+        os.mkdir(self.skill_weights_dir)
 
     def log(self, epoch, global_step, skill_stats, sac_stats, policy, skill_model, env):
         if self.checkpointer is not None:
@@ -76,6 +80,8 @@ class Logger:
             plt.close(fig)
 
             self.save_policy(policy, epoch)
+            self.save_skill_model_weights(skill_model, epoch)
+            self.save_stats()
 
     def skill_vis(self, ax1, ax2, policy, skill_model, env):
         point_env_vis.skill_vis(ax1, env, policy, self.vis_skill_set, self.num_samples_per_skill, self.skill_length)
@@ -98,17 +104,14 @@ class Logger:
         fig.savefig(save_path)
         plt.close(fig)
 
-    def save_stats(self):
-        rewards = np.array(self.sac_stats['reward']).flatten()
-        discrim_losses = np.array(self.skill_model_stats['loss']).flatten()
-        discrim_acc = np.array(self.skill_model_stats['accuracy']).flatten()
+    def restore_experiment(self, sd_agent):
+        self.initialise_checkpointer(sd_agent.policy_learner.agent, sd_agent.rollout_driver.replay_buffer)
+        self.restore_skill_model_weights(sd_agent.skill_model)
 
-        np.save(os.path.join(self.vis_dir, "intrinsic_rewards"), rewards)
-        np.save(os.path.join(self.vis_dir, "discrim_loss"), discrim_losses)
-        np.save(os.path.join(self.vis_dir, "discrim_acc"), discrim_acc)
-
-    def initialise_checkpointer(self, agent, replay_buffer, train_step, skill_model):
+    def initialise_checkpointer(self, agent, replay_buffer):
         checkpoint_dir = os.path.join(self.log_dir, "checkpoints")
+        train_step = tf.compat.v1.train.get_or_create_global_step()
+
         checkpointer = common.Checkpointer(
             ckpt_dir=checkpoint_dir,
             max_to_keep=1,
@@ -119,9 +122,28 @@ class Logger:
         )
 
         self.checkpointer = checkpointer
+
         checkpointer.initialize_or_restore()
 
     def save_policy(self, policy, epoch):
-        policy_dir = os.path.join(self.log_dir, f"policy_{epoch}")
+        policy_dir = os.path.join(self.policies_dir, f"policy_{epoch}")
         tf_policy_saver = policy_saver.PolicySaver(policy)
         tf_policy_saver.save(policy_dir)
+
+    def save_skill_model_weights(self, skill_model, epoch):
+        weights_dir = os.path.join(self.skill_weights_dir, f"weights_{epoch}")
+        skill_model.model.save_weights(weights_dir)
+
+    def restore_skill_model_weights(self, skill_model):
+        weights = sorted(os.listdir(self.skill_weights_dir), key=os.path.getmtime)
+        skill_model.model.load_weights(weights[-1])
+
+
+    def save_stats(self):
+        rewards = np.array(self.sac_stats['reward']).flatten()
+        discrim_losses = np.array(self.skill_model_stats['loss']).flatten()
+        discrim_acc = np.array(self.skill_model_stats['accuracy']).flatten()
+
+        np.save(os.path.join(self.vis_dir, "intrinsic_rewards"), rewards)
+        np.save(os.path.join(self.vis_dir, "discrim_loss"), discrim_losses)
+        np.save(os.path.join(self.vis_dir, "discrim_acc"), discrim_acc)
