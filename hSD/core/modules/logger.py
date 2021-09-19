@@ -44,7 +44,7 @@ class Logger:
         os.mkdir(self.skill_weights_dir)
         os.mkdir(self.stats_dir)
 
-    def log(self, epoch, global_step, skill_stats, sac_stats, policy, skill_model, env):
+    def log(self, epoch, global_step, skill_stats, sac_stats, timer_stats, policy, skill_model, env):
         if self.checkpointer is not None:
             self.checkpointer.save(global_step)
 
@@ -138,6 +138,10 @@ class Logger:
         if len(weights) > 0:
             skill_model.model.load_weights(weights[-1])
 
+    def save_timer_stats(self, stats):
+        filepath = os.path.join(self.stats_dir, 'timer_stats.txt')
+        with open(filepath, 'w') as f:
+            f.write(stats)
 
     def save_stats(self):
         rewards = np.array(self.sac_stats['reward']).flatten()

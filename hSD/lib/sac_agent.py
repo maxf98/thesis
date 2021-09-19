@@ -369,7 +369,7 @@ class SacAgent(tf_agent.TFAgent):
             weights: Optional[types.Tensor] = None,
             training: bool = False):
     """Returns the loss of the provided experience.
-    This method is only used at test time!
+    This method is only used at resample_no_sn time!
     Args:
       experience: A time-stacked trajectory object.
       weights: Optional scalar or elementwise (per-batch-entry) importance
