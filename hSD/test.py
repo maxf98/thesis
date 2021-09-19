@@ -13,6 +13,7 @@ from tf_agents.drivers.dynamic_step_driver import DynamicStepDriver
 
 from tf_agents.utils.common import Checkpointer
 
+"""
 def buffer_size(rb):
     dataset = rb.as_dataset(single_deterministic_pass=True)
     mapped = list(dataset.map(lambda x, _: x.observation))
@@ -48,4 +49,24 @@ print(buffer_size(buffer))
 train_checkpointer.initialize_or_restore()
 global_step = tf.compat.v1.train.get_or_create_global_step()
 print(buffer_size(buffer))
+"""
 
+def annealed_entropy(step):
+    entropy_anneal_period = 2500
+    entropy_anneal_steps = 2000
+    initial_entropy = 10
+    target_entropy = 0.1
+
+    step = step % entropy_anneal_period if entropy_anneal_period is not None else step
+
+    alpha = initial_entropy - min((step / entropy_anneal_steps), 1) * (initial_entropy - target_entropy)
+
+    return alpha
+
+alphas = [annealed_entropy(i) for i in range(10000)]
+rsfs = [1 / a for a in alphas]
+fig, ax = plt.subplots()
+
+ax.plot(range(10000), rsfs)
+
+plt.show()

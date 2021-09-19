@@ -1,10 +1,10 @@
 import gin
 import os
+import shutil
 
 import tensorflow_probability
 
 import skill_discovery_launcher
-import experiment_logger
 
 from env import point_environment, skill_environment
 from env.maze import maze_env
@@ -19,12 +19,12 @@ tfd = tensorflow_probability.distributions
 
 
 @gin.configurable
-def hierarchical_skill_discovery(num_layers: int, skill_lengths, config_path):
+def hierarchical_skill_discovery(num_layers: int, skill_lengths, log_dir, config_path):
     """if num_layers == 1 we are simply performing skill discovery (no hierarchy)"""
     envs = [get_base_env()]
     policies, skill_models = [], []
 
-    logger = init_experiment_logger(config_path=config_path)
+    create_log_dir(log_dir, config_path)
 
     for i in range(num_layers):
         print("–––––––––––––––––––––––––––––––––––")
@@ -38,7 +38,7 @@ def hierarchical_skill_discovery(num_layers: int, skill_lengths, config_path):
         agent = skill_discovery_launcher.initialise_skill_discovery_agent(tf_py_environment.TFPyEnvironment(train_env),
                                                       tf_py_environment.TFPyEnvironment(eval_env),
                                                       skill_length=skill_length,
-                                                      log_dir=logger.get_layer_log_dir(i))
+                                                      log_dir=get_layer_log_dir(log_dir, i))
 
         policy, skill_model = agent.train()
 
@@ -50,7 +50,7 @@ def hierarchical_skill_discovery(num_layers: int, skill_lengths, config_path):
         policies.append(policy)
         skill_models.append(skill_model)
 
-    return policies, skill_models
+    return envs, policies, skill_models
 
 
 @gin.configurable
@@ -69,10 +69,17 @@ def get_base_env(env_name, point_env_step_size=0.1, point_env_box_size=1.) -> py
         return suite_gym.load("Ant-v2")
 
 
-@gin.configurable
-def init_experiment_logger(log_dir, config_path=None):
-    """should restore experiment state if possible, and handle saving and restoring policies and skill models"""
-    return experiment_logger.ExperimentLogger(log_dir, config_path)
+def create_log_dir(log_dir, config_path):
+    if not os.path.exists(log_dir):
+        os.makedirs(log_dir)
+    else:
+        print("directory exists already, you probably wanna handle that somehow...")
+
+    shutil.copy(config_path, log_dir)
+
+
+def get_layer_log_dir(log_dir, layer):
+    return os.path.join(log_dir, str(layer))
 
 
 if __name__ == '__main__':

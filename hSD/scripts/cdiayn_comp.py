@@ -9,7 +9,6 @@ from scripts import point_env_vis
 
 from tf_agents.environments.tf_py_environment import TFPyEnvironment
 
-
 from core.modules import utils
 
 
@@ -42,17 +41,17 @@ def compare_cont_discrete_diayn():
     plt.show()
 
 
-def vis_saved_policy(ax, policy_dir, cont=True, title=None, env=None, skill_length=25):
+def vis_saved_policy(ax, policy_dir, cont=True, title=None, env=None, skill_length=25, box_size=None):
     policy = tf.compat.v2.saved_model.load(policy_dir)
     if env is None:
-        env = TFPyEnvironment(point_environment.PointEnv(step_size=0.1, box_size=1))
+        env = TFPyEnvironment(point_environment.PointEnv(step_size=0.1, box_size=box_size))
     if cont:
         skills = utils.discretize_continuous_space(-1, 1, 3, 2)
     else:
         NUM_SKILLS = 8
         skills = tf.one_hot(list(range(NUM_SKILLS)), NUM_SKILLS)
 
-    point_env_vis.skill_vis(ax, env, policy, skills, 3, skill_length=skill_length)
+    point_env_vis.skill_vis(ax, env, policy, skills, 3, skill_length=skill_length, box_size=box_size)
 
     if title is not None:
         ax.set(title=title)
@@ -137,18 +136,53 @@ def vis_run():
 def vis_out_of_distribution_skills():
     # just increase size of point environment and shift start-state to (-1, 0)
     policy_dir = "../logs/diayn/thesis/entropy/cdiayn-1/policies/policy_0"
-    env = TFPyEnvironment(point_environment.PointEnv(step_size=0.1, box_size=1))
+    box_size = 2
+    env = TFPyEnvironment(point_environment.PointEnv(step_size=0.1, box_size=box_size))
 
     fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(5, 5))
-    vis_saved_policy(ax1, policy_dir, cont=True, title="start=(0,0)", env=env, skill_length=20)
+    vis_saved_policy(ax1, policy_dir, cont=True, title=None, env=env, skill_length=20, box_size=box_size)
 
-    env = point_environment.PointEnv(step_size=0.1, box_size=1)
-    env.set_start_state((-1, 1))
+    env = point_environment.PointEnv(step_size=0.1, box_size=box_size)
+    env.set_start_state((-1.75, 1.75))
     env = TFPyEnvironment(env)
 
-    vis_saved_policy(ax2, policy_dir, cont=True, title="start=(-1,0)", env=env, skill_length=20)
+    vis_saved_policy(ax2, policy_dir, cont=True, title=None, env=env, skill_length=30, box_size=box_size)
 
     plt.show()
+
+
+def sequence_state():
+    policy_dir = "../logs/diayn/thesis/entropy/cdiayn-1/policies/policy_0"
+
+    fig = plt.figure(constrained_layout=True)
+    gs = fig.add_gridspec(1, 3, width_ratios=[1, 1, 1.5])
+    ax1 = fig.add_subplot(gs[0])
+    ax2 = fig.add_subplot(gs[1])
+    ax3 = fig.add_subplot(gs[2])
+
+    vis_saved_policy(ax1, policy_dir, box_size=1)
+    rollout_skill_sequence(ax2, policy_dir, box_size=1, s_norm=False)
+    rollout_skill_sequence(ax3, policy_dir, box_size=3, s_norm=True)
+
+    plt.show()
+
+
+def rollout_skill_sequence(ax, policy_dir, box_size, s_norm):
+    policy = tf.compat.v2.saved_model.load(policy_dir)
+    env = TFPyEnvironment(point_environment.PointEnv(step_size=0.1, box_size=box_size))
+    skills = utils.discretize_continuous_space(-1, 1, 3, 2)
+    cmap = point_env_vis.get_cmap(len(skills))
+
+    state_seq = []
+    time_step = env.reset()
+    for skill in skills[:5]:
+        skill_seq, time_step = point_env_vis.rollout_skill_t_steps(env, policy, skill, time_step, 20, state_norm=s_norm)
+        ax.plot(skill_seq[0][0], skill_seq[0][1], marker='o', markersize=3, color='black', zorder=11)
+        state_seq.append([skill_seq])
+
+    point_env_vis.plot_all_skills(ax, cmap, state_seq, alpha=1)
+    point_env_vis.config_subplot(ax, box_size=box_size)
+
 
 
 if __name__ == '__main__':
@@ -166,4 +200,6 @@ if __name__ == '__main__':
 
     #vis_run()
 
-    vis_out_of_distribution_skills()
+    #vis_out_of_distribution_skills()
+
+    sequence_state()

@@ -1,10 +1,10 @@
 import matplotlib.pyplot as plt
 
 import tensorflow as tf
-from env import point_environment
 from env.maze import maze_env
-from tf_agents.environments import tf_py_environment
 from core.modules import utils
+from tf_agents.trajectories import time_step as ts
+
 
 
 ENV_LIMS = dict(
@@ -26,26 +26,7 @@ def get_cmap(num_skills):
     return cmap
 
 
-def plot_trajectories(batch):
-    fig, ax = plt.subplots(1, 1, figsize=(5,5))
-    cmap = plt.get_cmap('tab10')
-    traj = []
-    col = 0
-    for ts in batch:
-        if not ts.is_last():
-            traj.append(ts.observation)
-        else:
-            xs = [ts[0][0] for ts in traj]
-            ys = [ts[0][1] for ts in traj]
-            ax.plot(xs, ys, color=cmap(col), linewidth=1)
-            traj = []
-            col += 1
-
-    config_subplot(ax)
-    plt.show()
-
-
-def config_subplot(ax, maze_type=None, extra_lim=0., title=None):
+def config_subplot(ax, maze_type=None, box_size=None, extra_lim=0., title=None):
     if title is not None:
         ax.set_title(title, fontsize=14)
 
@@ -57,11 +38,13 @@ def config_subplot(ax, maze_type=None, extra_lim=0., title=None):
         ax.set_xlim(env_config["xlim"][0] - extra_lim, env_config["xlim"][1] + extra_lim)
         ax.set_ylim(env_config["ylim"][0] - extra_lim, env_config["ylim"][1] + extra_lim)
     else:  # default, point_env_limits
-
-        ax.set_xlim(-1, 1)
-        ax.set_ylim(-1, 1)
-        #ax.set_xticks([-1., 0., 1.])
-        #ax.set_yticks([-1., 0., 1.])
+        if box_size is None:
+            box_size = 1
+        ax.set_xlim(-box_size, box_size)
+        ax.set_ylim(-box_size, box_size)
+        ax.set_xticks([-box_size, 0., box_size])
+        ax.set_yticks([-box_size, 0., box_size])
+        ax.set_aspect('equal', adjustable='box')
 
     #ax.get_xaxis().set_visible(False)
     #ax.get_yaxis().set_visible(False)
@@ -79,29 +62,30 @@ def one_hots_for_num_skills(num_skills):
     return tf.one_hot(list(range(num_skills)), num_skills)
 
 
-def skill_vis(ax, env, policy, skills, rollouts_per_skill, skill_length):
+def skill_vis(ax, env, policy, skills, rollouts_per_skill, skill_length, box_size=None):
     # collect rollouts w/ policy (store unaugmented observations...) -> visualise rollouts
     skill_trajectories = collect_skill_trajectories(env, policy, skills, rollouts_per_skill, skill_length)
 
     cmap = get_cmap(len(skills))
     plot_all_skills(ax, cmap, skill_trajectories)
 
-    config_subplot(ax,title="Skills")
+    config_subplot(ax, box_size=box_size)
 
 
 def plot_all_skills(ax, cmap, trajectories, alpha=0.5, linewidth=2):
     for skill_i in range(len(trajectories)):
         for i in range(len(trajectories[skill_i])):
-            traj = trajectories[skill_i][i]
-            xs = [step[0] for step in traj]
-            ys = [step[1] for step in traj]
-            ax.plot(xs, ys, label="Skill #{}".format(skill_i), color=cmap(skill_i), alpha=alpha,
-                    linewidth=linewidth, zorder=10)
+            plot_trajectory(ax, trajectories[skill_i][i], cmap(skill_i), alpha=alpha, linewidth=linewidth)
 
-    # mark starting point
     ax.plot(trajectories[0][0][0][0], trajectories[0][0][0][1], marker='o', markersize=8, color='black', zorder=11)
-
     return ax
+
+
+def plot_trajectory(ax, traj, color, alpha=0.5, linewidth=2):
+    xs = [step[0] for step in traj]
+    ys = [step[1] for step in traj]
+
+    ax.plot(xs, ys, color=color, alpha=alpha, linewidth=linewidth, zorder=10)
 
 
 def collect_skill_trajectories(env, policy, skills, rollouts_per_skill, skill_length):
@@ -110,16 +94,29 @@ def collect_skill_trajectories(env, policy, skills, rollouts_per_skill, skill_le
     for i in range(len(skills)):
         for si in range(rollouts_per_skill):
             time_step = env.reset()
-            cur_traj = []  # only collects states
-            for ti in range(skill_length):
-                cur_traj.append(time_step.observation.numpy().flatten().tolist())
-                aug_time_step = utils.aug_time_step(time_step, skills[i])
-                action_step = policy.action(aug_time_step)
-                time_step = env.step(action_step.action)
-
-            trajectories[i].append(cur_traj)
+            traj, _ = rollout_skill_t_steps(env, policy, skills[i], time_step, skill_length)
+            trajectories[i].append(traj)
 
     return trajectories
+
+
+def rollout_skill_t_steps(env, policy, skill, time_step, t, state_norm=False):
+    traj = []
+    s_0 =  time_step.observation if state_norm else None
+    for ti in range(t):
+        traj.append(time_step.observation.numpy().flatten().tolist())
+        aug_time_step = preprocess_time_step(time_step, skill, s_0)
+        action_step = policy.action(aug_time_step)
+        time_step = env.step(action_step.action)
+    return traj, time_step
+
+
+def preprocess_time_step(time_step, skill, s_norm):
+    obs = time_step.observation - s_norm if s_norm is not None else time_step.observation
+    return ts.TimeStep(time_step.step_type,
+                       time_step.reward,
+                       time_step.discount,
+                       tf.concat([obs, tf.reshape(skill, (1, -1))], axis=-1))
 
 
 def categorical_discrim_heatmap(ax, discriminator):
@@ -146,16 +143,6 @@ def cont_diayn_skill_heatmap(ax, discriminator):
     ax.imshow(s)
 
     return ax
-
-
-def vis_skill_model(skill_model):
-    pass
-
-
-def vis_saved_policy(ax):
-    env = tf_py_environment.TFPyEnvironment(point_environment.PointEnv(step_size=0.05))
-    saved_policy = tf.compat.v2.saved_model.load("logs")
-    skill_vis(ax, saved_policy, 4, env, 10)
 
 
 if __name__ == '__main__':

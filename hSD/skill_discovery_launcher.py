@@ -94,15 +94,19 @@ def init_skill_model(objective, skill_prior, obs_dim, skill_dim, hidden_dim=(128
 
 
 @gin.configurable
-def init_policy_learner(obs_spec, action_spec, time_step_spec, rl_alg='SAC', fc_layer_params=(128, 128), target_entropy=None, reward_scale_factor=10.0, alpha_loss_weight=1.0):
+def init_policy_learner(obs_spec, action_spec, time_step_spec, rl_alg='SAC', fc_layer_params=(128, 128),
+                        initial_entropy=1.0, target_entropy=None, entropy_anneal_steps=10000, entropy_anneal_period=None,
+                        alpha_loss_weight=1.0):
     """enable other RL algorithms than SAC, or maybe just using a policy"""
     if rl_alg == 'SAC':
         return SACLearner(obs_spec,
                           action_spec,
                           time_step_spec,
                           network_fc_params=fc_layer_params,
+                          initial_entropy=initial_entropy,
                           target_entropy=target_entropy,
-                          reward_scale_factor=reward_scale_factor,
+                          entropy_anneal_steps=entropy_anneal_steps,
+                          entropy_anneal_period=entropy_anneal_period,
                           alpha_loss_weight=alpha_loss_weight)
 
 
@@ -127,13 +131,3 @@ def init_skill_discovery(objective, skill_prior, train_env, eval_env, rollout_dr
     
     else:
         raise ValueError("invalid objective")
-
-
-if __name__ == '__main__':
-    config_root_dir = "configs/run-configs"
-    configs = os.listdir(config_root_dir)
-    print(configs)
-    # we should still be able to run a plain skill discovery experiment... this isn't gonna work though, because we need to parse the environment...
-    for config in configs:
-        config_path = os.path.join(config_root_dir, config)
-        gin.parse_config_file(config_path)

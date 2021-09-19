@@ -12,9 +12,17 @@ from tf_agents.train.utils import train_utils
 
 
 class PolicyLearner(ABC):
-    def __init__(self, obs_spec, action_spec, time_step_spec):
+    def __init__(self, obs_spec, action_spec, time_step_spec,
+                 initial_entropy, target_entropy, entropy_anneal_steps, entropy_anneal_period):
         """maximises rewards achieved by skill-conditioned policy"""
         self.obs_spec, self.action_spec, self.time_step_spec = obs_spec, action_spec, time_step_spec
+
+        self.initial_entropy = initial_entropy
+        self.target_entropy = target_entropy
+
+        self.entropy_anneal_steps = entropy_anneal_steps
+        # if not None, then we perform cyclical annealing, resetting to initial entropy every anneal_period steps
+        self.entropy_anneal_period = entropy_anneal_period
 
     @abstractmethod
     def train(self, batch):
@@ -24,6 +32,14 @@ class PolicyLearner(ABC):
     def collect_policy(self):
         """returns current policy for collecting environment experience"""
         return None
+
+    def anneal_alpha(self, agent):
+        step = agent.train_step_counter.numpy()
+
+        step = step % self.entropy_anneal_period if self.entropy_anneal_period is not None else step
+        alpha = self.initial_entropy - min((step / self.entropy_anneal_steps), 1) * (self.initial_entropy - self.target_entropy)
+
+        agent._reward_scale_factor = 1 / alpha
 
     @property
     def policy(self):
@@ -37,11 +53,14 @@ class SACLearner(PolicyLearner):
                  action_spec,
                  time_step_spec,
                  network_fc_params=(128, 128),
+                 initial_entropy=1.0,
                  target_entropy=None,
-                 reward_scale_factor=1.0,
+                 entropy_anneal_steps=10000,
+                 entropy_anneal_period=None,
                  alpha_loss_weight=1.0
                  ):
-        super(SACLearner, self).__init__(obs_spec, action_spec, time_step_spec)
+        super(SACLearner, self).__init__(obs_spec, action_spec, time_step_spec,
+                                         initial_entropy, target_entropy, entropy_anneal_steps, entropy_anneal_period)
         """
         initialise SAC rl agent and abstract some default hyperparameters
         """
@@ -52,8 +71,7 @@ class SACLearner(PolicyLearner):
         self.target_update_period = 1
         self.gamma = 1.0
         self.alpha_loss_weight = alpha_loss_weight
-        self.reward_scale_factor = reward_scale_factor
-        self.target_entropy = target_entropy
+        self.reward_scale_factor = 1 / initial_entropy
         self.agent = self.initialise_sac_agent()
 
     def initialise_sac_agent(self):
@@ -97,16 +115,11 @@ class SACLearner(PolicyLearner):
 
     def train(self, batch):
         sac_loss = self.agent.train(batch)
-        self.alpha_anneal()
+
+        if self.target_entropy is not None:
+            self.anneal_alpha(self.agent)
+
         return sac_loss.loss
-
-    def alpha_anneal(self):
-        rsf = (self.agent.train_step_counter.numpy() + 100) / 1000
-        self.agent._reward_scale_factor = rsf
-
-    def cyclical_annealing(self):
-        #TODO
-        self.agent._reward_scale_factor = 10
 
     @property
     def collect_policy(self):

@@ -34,7 +34,8 @@ class Logger:
         if not os.path.exists(self.log_dir):
             self.make_experiment_dirs()
         else:
-            self.restore_experiment(sd_agent)
+            self.initialise_checkpointer(sd_agent.policy_learner.agent, sd_agent.rollout_driver.replay_buffer)
+            self.restore_skill_model_weights(sd_agent.skill_model)
 
     def make_experiment_dirs(self):
         os.makedirs(self.log_dir)
@@ -106,10 +107,6 @@ class Logger:
         fig.savefig(save_path)
         plt.close(fig)
 
-    def restore_experiment(self, sd_agent):
-        self.initialise_checkpointer(sd_agent.policy_learner.agent, sd_agent.rollout_driver.replay_buffer)
-        self.restore_skill_model_weights(sd_agent.skill_model)
-
     def initialise_checkpointer(self, agent, replay_buffer):
         checkpoint_dir = os.path.join(self.log_dir, "checkpoints")
         train_step = tf.compat.v1.train.get_or_create_global_step()
@@ -138,7 +135,8 @@ class Logger:
 
     def restore_skill_model_weights(self, skill_model):
         weights = sorted(os.listdir(self.skill_weights_dir), key=os.path.getmtime)
-        skill_model.model.load_weights(weights[-1])
+        if len(weights) > 0:
+            skill_model.model.load_weights(weights[-1])
 
 
     def save_stats(self):
