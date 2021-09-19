@@ -153,17 +153,17 @@ def vis_out_of_distribution_skills():
 
 if __name__ == '__main__':
     #compare_cont_discrete_diayn()
-    """
-    policy_dir = "../logs/diayn/thesis/entropy/cdiayn-1/policies/policy_0"
+
+    policy_dir = "../logs/diayn/thesis/annealcoverage/0/policies/policy_60"
 
     fig, ax = plt.subplots(1, 1, figsize=(5, 5))
-    vis_saved_policy(ax, policy_dir, cont=True, title="Hello")
+    vis_saved_policy(ax, policy_dir, cont=True, title="Hello", skill_length=10)
     plt.show()
-    """
+
     #vis_entropy_policies()
 
     #vis_local_optima()
 
     #vis_run()
 
-    vis_out_of_distribution_skills()
+    #vis_out_of_distribution_skills()

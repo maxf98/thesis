@@ -18,7 +18,7 @@ def buffer_size(rb):
     mapped = list(dataset.map(lambda x, _: x.observation))
     return len(mapped)
 
-checkpoint_dir = os.path.join(".", "test")
+checkpoint_dir = os.path.join(".", "resample_no_sn")
 
 global_step = tf.compat.v1.train.get_or_create_global_step()
 

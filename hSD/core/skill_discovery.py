@@ -38,7 +38,7 @@ class SkillDiscovery(ABC):
         pass
 
     @abstractmethod
-    def log_epoch(self, epoch, skill_model_info, rl_info):
+    def log_epoch(self, epoch, skill_model_info, rl_info, timer_info):
         pass
 
     @gin.configurable
@@ -72,7 +72,7 @@ class SkillDiscovery(ABC):
             self.rollout_driver.policy = self.policy_learner.collect_policy
 
             # log losses, times, and possibly visualise
-            self.log_epoch(epoch, discrim_train_stats, sac_train_stats)
+            self.log_epoch(epoch, discrim_train_stats, sac_train_stats, gt.report())
             gt.stamp("logging", unique=False)
 
         print(gt.report())

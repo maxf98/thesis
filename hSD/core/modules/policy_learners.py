@@ -2,8 +2,7 @@ from abc import ABC, abstractmethod
 
 import tensorflow as tf
 from tf_agents.policies.tf_policy import TFPolicy
-# from tf_agents.agents.sac import sac_agent
-from thesis.hSD.lib import sac_agent
+from tf_agents.agents.sac import sac_agent
 from tf_agents.agents.ddpg import critic_network
 from tf_agents.networks import actor_distribution_network
 from tf_agents.agents.sac import tanh_normal_projection_network

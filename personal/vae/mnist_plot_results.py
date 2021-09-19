@@ -16,7 +16,7 @@ def plot_results(models,
 
     # Arguments:
         models (tuple): encoder and decoder models
-        data (tuple): test data and label
+        data (tuple): resample_no_sn data and label
         batch_size (int): prediction batch size
         model_name (string): which model is using this function
     """

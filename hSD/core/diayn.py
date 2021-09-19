@@ -65,10 +65,10 @@ class DIAYN(SkillDiscovery):
         r = tf.subtract(log_probs, tf.math.log(1 / self.skill_dim))
         return r
 
-    def log_epoch(self, epoch, skill_stats, sac_stats):
+    def log_epoch(self, epoch, skill_stats, sac_stats, timer_stats):
         global_step = tf.compat.v1.train.get_global_step()
         if self.logger is not None:
-            self.logger.log(epoch, global_step, skill_stats, sac_stats, self.policy_learner.policy, self.skill_model, self.eval_env)
+            self.logger.log(epoch, global_step, skill_stats, sac_stats, timer_stats, self.policy_learner.policy, self.skill_model, self.eval_env)
             #self.logger.per_skill_collect_rollouts(epoch, self.policy_learner.collect_policy, self.eval_env)
 
 
