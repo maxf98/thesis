@@ -79,6 +79,7 @@ class BaseRolloutDriver(RolloutDriver):
 
     def preprocess_time_step(self, time_step, skill, s_norm):
         obs = time_step.observation - s_norm if self.state_norm else time_step.observation
+        obs = tf.cast(obs, tf.float32)
         return ts.TimeStep(time_step.step_type,
                            time_step.reward,
                            time_step.discount,

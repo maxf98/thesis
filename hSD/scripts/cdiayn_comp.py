@@ -133,6 +133,7 @@ def vis_run():
     #plt.tight_layout()
     plt.show()
 
+
 def vis_out_of_distribution_skills():
     # just increase size of point environment and shift start-state to (-1, 0)
     policy_dir = "../logs/diayn/thesis/entropy/cdiayn-1/policies/policy_0"
@@ -200,12 +201,8 @@ if __name__ == '__main__':
 
     #vis_run()
 
-<<<<<<< HEAD
     #vis_out_of_distribution_skills()
 
-    sequence_state()
-||||||| 969de7d
-    vis_out_of_distribution_skills()
-=======
+    #sequence_state()
     #vis_out_of_distribution_skills()
->>>>>>> 919f572ad33a9c857502e5522f003811b1c95198
+    #vis_out_of_distribution_skills()

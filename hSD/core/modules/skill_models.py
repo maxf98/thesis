@@ -119,7 +119,6 @@ class BaseSkillModel(SkillModel):
         return self.model(x)
 
     def log_prob(self, x, y, return_full=False):
-        """expects z as one-hot vector"""
         pred_distr = self.model(x)
         return pred_distr.log_prob(y)
 
