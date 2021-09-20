@@ -37,11 +37,14 @@ class Logger:
     def initialize_or_restore(self, sd_agent):
         if not os.path.exists(self.log_dir):
             self.make_experiment_dirs()
+            self.initialise_checkpointer(sd_agent.policy_learner.agent, sd_agent.rollout_driver.replay_buffer)
         else:
+            self.initialise_checkpointer(sd_agent.policy_learner.agent, sd_agent.rollout_driver.replay_buffer)
+            # only load things if there are things to load...
+            #if tf.compat.v1.train.get_global_step() > 0:
             self.restore_skill_model_weights(sd_agent.skill_model)
             self.load_stats()
-
-        self.initialise_checkpointer(sd_agent.policy_learner.agent, sd_agent.rollout_driver.replay_buffer)
+            tf.compat.v1.assign(tf.compat.v1.train.get_global_step(), 100)
 
     def make_experiment_dirs(self):
         os.makedirs(self.log_dir)
@@ -63,7 +66,7 @@ class Logger:
             da = np.array(self.skill_model_stats["accuracy"]).flatten()
             sl = np.array(self.sac_stats["loss"]).flatten()
             sr = np.array(self.sac_stats['reward']).flatten()
-            alpha = [policy_learner.alpha_for_step(i) for i in range(len(sl))]
+            alpha = [policy_learner.alpha_for_step(i) for i in range(policy_learner.agent.train_step_counter.numpy())]
 
             ax1.plot(range(len(da)), da, color='lightblue', linewidth=3)
             ax1.set(title='Skill model accuracy')
@@ -77,8 +80,7 @@ class Logger:
             ax4.plot(range(len(sr)), sr, color='green', linewidth=3)
             ax4.set(title='intrinsic reward')
 
-            point_env_vis.skill_vis(ax5, env, policy_learner.policy,
-                                    self.vis_skill_set, self.num_samples_per_skill, self.skill_length)
+            #point_env_vis.skill_vis(ax5, env, policy_learner.policy, self.vis_skill_set, self.num_samples_per_skill, self.skill_length)
 
             ax6.plot(range(len(alpha)), alpha, color='gray', linewidth=3)
             ax6.set(title='alpha')

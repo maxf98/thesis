@@ -23,10 +23,10 @@ tfd = tensorflow_probability.distributions
 
 
 @gin.configurable
-def hierarchical_skill_discovery(num_layers: int, skill_lengths, log_dir, config_path):
+def hierarchical_skill_discovery(num_layers: int, skill_lengths, log_dir, config_path, training=False):
     """if num_layers == 1 we are simply performing skill discovery (no hierarchy)"""
     envs = [get_base_env()]
-    policies, skill_models = [], []
+    agents = []
 
     create_log_dir(log_dir, config_path)
 
@@ -50,11 +50,9 @@ def hierarchical_skill_discovery(num_layers: int, skill_lengths, log_dir, config
         py_policy = py_tf_eager_policy.PyTFEagerPolicy(policy)  # convert tf policy to py policy for skill wrapper
         envs.append(skill_environment.SkillEnv(train_env, py_policy, skill_length))
 
-        #keep cached for now, not really sure what for exactly...
-        policies.append(policy)
-        skill_models.append(skill_model)
+        agents.append(agent)
 
-    return envs, policies, skill_models
+    return envs, agents
 
 
 @gin.configurable
@@ -76,10 +74,9 @@ def get_base_env(env_name, point_env_step_size=0.1, point_env_box_size=1.) -> py
 def create_log_dir(log_dir, config_path):
     if not os.path.exists(log_dir):
         os.makedirs(log_dir)
+        shutil.copy(config_path, log_dir)
     else:
         print("directory exists already, you probably wanna handle that somehow...")
-
-    shutil.copy(config_path, log_dir)
 
 
 def get_layer_log_dir(log_dir, layer):
@@ -175,6 +172,7 @@ def init_skill_discovery(objective, skill_prior, train_env, eval_env, rollout_dr
 
 
 if __name__ == '__main__':
+
     config_root_dir = "configs/run-configs"
     configs = os.listdir(config_root_dir)
     print(configs)

@@ -10,7 +10,7 @@ from tensorflow.python.framework.tensor_spec import BoundedTensorSpec
 
 
 def aug_obs_spec(obs_spec, new_dim):
-    return BoundedTensorSpec(shape=(new_dim, ), dtype=obs_spec.dtype,
+    return BoundedTensorSpec(shape=(new_dim, ), dtype=tf.float32,
                              name="augmented observation", minimum=obs_spec.minimum, maximum=obs_spec.maximum)
 
 

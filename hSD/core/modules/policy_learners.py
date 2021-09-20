@@ -99,7 +99,7 @@ class SACLearner(PolicyLearner):
             fc_layer_params=self.network_fc_params,
             continuous_projection_net=tanh_normal_projection_network.TanhNormalProjectionNetwork)
 
-        train_step = train_utils.create_train_step()
+        train_step = tf.Variable(initial_value=0, trainable=False)
 
         tf_agent = sac_agent.SacAgent(
             self.time_step_spec,
