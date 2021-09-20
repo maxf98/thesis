@@ -11,8 +11,6 @@ from scripts import point_env_vis
 from tf_agents.policies import policy_saver
 
 
-#TODO: save optimizer state for models
-
 @gin.configurable
 class Logger:
     def __init__(self, log_dir, vis_skill_set, skill_length, create_fig_interval=1, num_samples_per_skill=1):
