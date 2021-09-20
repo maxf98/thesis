@@ -1,5 +1,6 @@
 import numpy as np
 import tensorflow as tf
+from tensorflow import keras
 import tensorflow_probability as tfp
 import glob, os
 from matplotlib import pyplot as plt
@@ -49,7 +50,7 @@ print(buffer_size(buffer))
 train_checkpointer.initialize_or_restore()
 global_step = tf.compat.v1.train.get_or_create_global_step()
 print(buffer_size(buffer))
-"""
+
 
 def annealed_entropy(step):
     entropy_anneal_period = 2500
@@ -70,3 +71,21 @@ fig, ax = plt.subplots()
 ax.plot(range(10000), rsfs)
 
 plt.show()
+"""
+
+# Runnable example
+sequential_model = keras.Sequential(
+    [
+        keras.Input(shape=(784,), name="digits"),
+        keras.layers.Dense(64, activation="relu", name="dense_1"),
+        keras.layers.Dense(64, activation="relu", name="dense_2"),
+        keras.layers.Dense(10, name="predictions"),
+    ]
+)
+sequential_model.save_weights("ckpt")
+load_status = sequential_model.load_weights("ckpt")
+
+# `assert_consumed` can be used as validation that all variable values have been
+# restored from the checkpoint. See `tf.train.Checkpoint.restore` for other
+# methods in the Status object.
+load_status.assert_consumed()

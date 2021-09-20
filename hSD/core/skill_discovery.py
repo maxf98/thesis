@@ -51,7 +51,9 @@ class SkillDiscovery(ABC):
               policy_learner_train_steps
               ):
 
-        for epoch in range(1, num_epochs + 1):
+        start_epoch = tf.compat.v1.train.get_global_step().numpy() + 1
+
+        for epoch in range(start_epoch, num_epochs + 1):
             print(f"\nepoch {epoch}")
             # collect transitions from environment -- EXPLORE
             print("Collect experience")
@@ -69,7 +71,7 @@ class SkillDiscovery(ABC):
             gt.stamp("rl training", unique=False)
 
             # update exploration/collect policy
-            self.rollout_driver.policy = self.policy_learner.collect_policy
+            self.rollout_driver.policy = self.policy_learner.policy
 
             # log losses, times, and possibly visualise
             self.log_epoch(epoch, discrim_train_stats, sac_train_stats, gt.report())

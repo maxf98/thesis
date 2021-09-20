@@ -1,4 +1,5 @@
 from abc import ABC, abstractmethod
+import gin
 
 from tf_agents.environments.tf_environment import TFEnvironment
 from tf_agents.policies.tf_policy import TFPolicy
@@ -10,7 +11,6 @@ from tf_agents.trajectories import time_step as ts
 from core.modules import utils
 import tensorflow_probability as tfp
 import tensorflow as tf
-
 
 
 class RolloutDriver(ABC):
@@ -34,15 +34,16 @@ class RolloutDriver(ABC):
         pass
 
 
+@gin.configurable
 class BaseRolloutDriver(RolloutDriver):
     """collects simple transitions (s, z -> s') from the environment, with skill resampling"""
     def __init__(self,
                  environment,
                  policy,
                  skill_prior,
-                 skill_length,
-                 episode_length,
-                 buffer_size,
+                 skill_length=100,
+                 episode_length=100,
+                 buffer_size=1000,
                  state_norm=False
                  ):
         super().__init__(environment, policy, skill_prior, skill_length, episode_length, buffer_size)

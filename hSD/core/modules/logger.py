@@ -1,4 +1,5 @@
 import os
+import gin
 import matplotlib.pyplot as plt
 import numpy as np
 import tensorflow as tf
@@ -9,10 +10,12 @@ from scripts import point_env_vis
 
 from tf_agents.policies import policy_saver
 
-#TODO: make train statistics depend on global step, not data length... this way we can pick up where we left off!
 
+#TODO: save optimizer state for models
+
+@gin.configurable
 class Logger:
-    def __init__(self, log_dir, create_fig_interval, vis_skill_set, skill_length, num_samples_per_skill):
+    def __init__(self, log_dir, vis_skill_set, skill_length, create_fig_interval=1, num_samples_per_skill=1):
         self.sac_stats = {'loss': [], 'reward': []}
         self.skill_model_stats = {'loss': [], 'accuracy': []}
 
@@ -21,6 +24,7 @@ class Logger:
         self.policies_dir = os.path.join(self.log_dir, "policies")
         self.skill_weights_dir = os.path.join(self.log_dir, "skill_model_weights")
         self.stats_dir = os.path.join(self.log_dir, "stats")
+        self.checkpoint_dir = os.path.join(self.log_dir, "tf_agent_checkpoints")
 
         self.vis_skill_set = vis_skill_set
         self.skill_length = skill_length
@@ -34,8 +38,10 @@ class Logger:
         if not os.path.exists(self.log_dir):
             self.make_experiment_dirs()
         else:
-            self.initialise_checkpointer(sd_agent.policy_learner.agent, sd_agent.rollout_driver.replay_buffer)
             self.restore_skill_model_weights(sd_agent.skill_model)
+            self.load_stats()
+
+        self.initialise_checkpointer(sd_agent.policy_learner.agent, sd_agent.rollout_driver.replay_buffer)
 
     def make_experiment_dirs(self):
         os.makedirs(self.log_dir)
@@ -43,11 +49,9 @@ class Logger:
         os.mkdir(self.policies_dir)
         os.mkdir(self.skill_weights_dir)
         os.mkdir(self.stats_dir)
+        os.mkdir(self.checkpoint_dir)
 
-    def log(self, epoch, global_step, skill_stats, sac_stats, timer_stats, policy, skill_model, env):
-        if self.checkpointer is not None:
-            self.checkpointer.save(global_step)
-
+    def log(self, epoch, skill_stats, sac_stats, timer_stats, policy_learner, skill_model, env):
         self.skill_model_stats['loss'].append(skill_stats['loss'])
         self.skill_model_stats['accuracy'].append(skill_stats['accuracy'])
         self.sac_stats['loss'].append(sac_stats['loss'])
@@ -59,20 +63,25 @@ class Logger:
             da = np.array(self.skill_model_stats["accuracy"]).flatten()
             sl = np.array(self.sac_stats["loss"]).flatten()
             sr = np.array(self.sac_stats['reward']).flatten()
+            alpha = [policy_learner.alpha_for_step(i) for i in range(len(sl))]
 
             ax1.plot(range(len(da)), da, color='lightblue', linewidth=3)
             ax1.set(title='Skill model accuracy')
 
-            ax2.plot(range(len(dl)), dl, color='red', linewidth=3)
-            ax2.set(title='Skill model training loss')
+            ax3.plot(range(len(dl)), dl, color='red', linewidth=3)
+            ax3.set(title='Skill model training loss')
 
-            ax3.plot(range(len(sl)), sl, color='red', linewidth=3)
-            ax3.set(title='SAC training loss')
+            ax2.plot(range(len(sl)), sl, color='red', linewidth=3)
+            ax2.set(title='SAC training loss')
 
             ax4.plot(range(len(sr)), sr, color='green', linewidth=3)
             ax4.set(title='intrinsic reward')
 
-            self.skill_vis(ax5, ax6, policy, skill_model, env)
+            point_env_vis.skill_vis(ax5, env, policy_learner.policy,
+                                    self.vis_skill_set, self.num_samples_per_skill, self.skill_length)
+
+            ax6.plot(range(len(alpha)), alpha, color='gray', linewidth=3)
+            ax6.set(title='alpha')
 
             fig.set_size_inches(18.5, 10.5)
             fig.subplots_adjust(wspace=0.2, hspace=0.2)
@@ -82,37 +91,23 @@ class Logger:
             fig.savefig(save_path)
             plt.close(fig)
 
-            self.save_policy(policy, epoch)
-            self.save_skill_model_weights(skill_model, epoch)
-            self.save_stats()
+            # only update the global step when we actually save the agent state
+            global_step = tf.compat.v1.train.get_global_step()
+            tf.compat.v1.assign(global_step, epoch)
 
-    def skill_vis(self, ax1, ax2, policy, skill_model, env):
-        point_env_vis.skill_vis(ax1, env, policy, self.vis_skill_set, self.num_samples_per_skill, self.skill_length)
-        #point_env_vis.categorical_discrim_heatmap(ax2, skill_model)
-        #point_env_vis.cont_diayn_skill_heatmap(ax2, skill_model)
+            if self.checkpointer is not None:
+                self.checkpointer.save(global_step)
 
-    def per_skill_collect_rollouts(self, epoch, collect_policy, env):
-        if epoch % self.create_fig_interval != 0:
-            return
-
-        # it would be nice if they weren't all in one row, if we did choose more to visualise
-        fig, axes = plt.subplots(nrows=len(self.vis_skill_set) // 4 + 1, ncols=4, figsize=(8, 8))
-        for i, skill in enumerate(self.vis_skill_set):
-            point_env_vis.skill_vis(axes[i], env, collect_policy, [skill], 10, self.skill_length)
-            axes[i].set(title=skill)
-            axes[i].set_aspect('equal', adjustable='box')
-
-        fig.suptitle("Epoch {}".format(epoch), fontsize=16)
-        save_path = os.path.join(self.vis_dir, "epoch_{} - exploration rollouts".format(epoch))
-        fig.savefig(save_path)
-        plt.close(fig)
+            self.save_policy(policy_learner.policy, epoch)
+            self.save_skill_model_weights(skill_model)
+            self.save_stats(timer_stats)
 
     def initialise_checkpointer(self, agent, replay_buffer):
-        checkpoint_dir = os.path.join(self.log_dir, "checkpoints")
+        # also restores the global train step (epoch)... not the best way to do it, but it works
         train_step = tf.compat.v1.train.get_or_create_global_step()
 
         checkpointer = common.Checkpointer(
-            ckpt_dir=checkpoint_dir,
+            ckpt_dir=self.checkpoint_dir,
             max_to_keep=1,
             agent=agent,
             policy=agent.policy,
@@ -129,25 +124,38 @@ class Logger:
         tf_policy_saver = policy_saver.PolicySaver(policy)
         tf_policy_saver.save(policy_dir)
 
-    def save_skill_model_weights(self, skill_model, epoch):
-        weights_dir = os.path.join(self.skill_weights_dir, f"weights_{epoch}")
+    def save_skill_model_weights(self, skill_model):
+        weights_dir = os.path.join(self.skill_weights_dir, f"weights")
         skill_model.model.save_weights(weights_dir)
 
     def restore_skill_model_weights(self, skill_model):
-        weights = sorted(os.listdir(self.skill_weights_dir), key=os.path.getmtime)
+        """
+        weights = sorted(os.listdir(self.skill_weights_dir))
         if len(weights) > 0:
             skill_model.model.load_weights(weights[-1])
+        """
+        skill_model.model.load_weights(os.path.join(self.skill_weights_dir, f"weights"))
 
-    def save_timer_stats(self, stats):
-        filepath = os.path.join(self.stats_dir, 'timer_stats.txt')
-        with open(filepath, 'w') as f:
-            f.write(stats)
+    def load_stats(self):
+        self.sac_stats['reward'] = np.load(os.path.join(self.stats_dir, "intrinsic_rewards.npy")).tolist()
+        self.sac_stats['loss'] = np.load(os.path.join(self.stats_dir, "policy_loss.npy")).tolist()
+        self.skill_model_stats['loss'] = np.load(os.path.join(self.stats_dir, "discrim_loss.npy")).tolist()
+        self.skill_model_stats['accuracy'] = np.load(os.path.join(self.stats_dir, "discrim_acc.npy")).tolist()
 
-    def save_stats(self):
+    def save_stats(self, timer_stats):
+        self.save_timer_stats(timer_stats)
         rewards = np.array(self.sac_stats['reward']).flatten()
+        policy_loss = np.array(self.sac_stats['loss']).flatten()
         discrim_losses = np.array(self.skill_model_stats['loss']).flatten()
         discrim_acc = np.array(self.skill_model_stats['accuracy']).flatten()
 
         np.save(os.path.join(self.stats_dir, "intrinsic_rewards"), rewards)
+        np.save(os.path.join(self.stats_dir, "policy_loss"), policy_loss)
         np.save(os.path.join(self.stats_dir, "discrim_loss"), discrim_losses)
         np.save(os.path.join(self.stats_dir, "discrim_acc"), discrim_acc)
+
+    def save_timer_stats(self, stats):
+        # at the moment just overwrites the previous stat to only contain the total train time
+        filepath = os.path.join(self.stats_dir, 'timer_stats.txt')
+        with open(filepath, 'w') as f:
+            f.write(stats)

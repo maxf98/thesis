@@ -145,5 +145,15 @@ def cont_diayn_skill_heatmap(ax, discriminator):
     return ax
 
 
+def per_skill_collect_rollouts(policy, vis_skill_set, skill_length, env):
+    fig, axes = plt.subplots(nrows=len(vis_skill_set) // 4 + 1, ncols=4, figsize=(8, 8))
+    for i, skill in enumerate(vis_skill_set):
+        skill_vis(axes[i], env, policy, [skill], 10, skill_length)
+        axes[i].set(title=skill)
+        axes[i].set_aspect('equal', adjustable='box')
+
+    return fig
+
+
 if __name__ == '__main__':
     pass

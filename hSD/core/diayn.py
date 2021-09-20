@@ -24,6 +24,7 @@ class DIAYN(SkillDiscovery):
         self.logger = logger
 
     def train_skill_model(self, batch_size, train_steps):
+        #TODO: train batches drawn from buffer...
         dataset = self.rollout_driver.replay_buffer.as_dataset(
             single_deterministic_pass=True)  # for now we train the discriminator on all experience collected in the last epoch
         aug_obs = tf.stack(list(dataset.map(lambda x, _: x.observation)))
@@ -52,10 +53,9 @@ class DIAYN(SkillDiscovery):
 
     def relabel_ir(self, batch):  # expects 2-time-step traj (as in SAC)
         obs_l, obs_r = tf.split(batch.observation, [1, 1], 1)
-        rl, rr = self.get_reward(obs_l), self.get_reward(obs_r)  # not sure we actually need to compute reward for both time steps...
-        ir = tf.stack([rl, rr], axis=1)
-
-        relabelled_batch = batch.replace(reward=ir)
+        ir = self.get_reward(obs_l)
+        # only compute reward for first time-step
+        relabelled_batch = batch.replace(reward=tf.stack([ir, batch.reward[:, 1]], axis=1))
         return relabelled_batch
 
     def get_reward(self, batch):  # expects single time-step batch (only appropriate for this version of DIAYN)
@@ -66,10 +66,10 @@ class DIAYN(SkillDiscovery):
         return r
 
     def log_epoch(self, epoch, skill_stats, sac_stats, timer_stats):
-        global_step = tf.compat.v1.train.get_global_step()
         if self.logger is not None:
-            self.logger.log(epoch, global_step, skill_stats, sac_stats, timer_stats, self.policy_learner.policy, self.skill_model, self.eval_env)
-            #self.logger.per_skill_collect_rollouts(epoch, self.policy_learner.collect_policy, self.eval_env)
+            da, dl = tf.reduce_mean(skill_stats['accuracy']).numpy(), tf.reduce_mean(skill_stats["loss"]).numpy()
+            sr, sl = tf.reduce_mean(sac_stats["reward"]).numpy(), tf.reduce_mean(sac_stats['loss']).numpy()
+            self.logger.log(epoch, {'accuracy': da, 'loss': dl}, {'reward':sr, 'loss':sl}, timer_stats, self.policy_learner, self.skill_model, self.eval_env)
 
 
 class ContDIAYN(DIAYN):
@@ -83,9 +83,7 @@ class ContDIAYN(DIAYN):
                  logger=None,
                  num_prior_samples=100
                  ):
-        super(DIAYN, self).__init__(train_env, eval_env, rollout_driver, skill_model, policy_learner)
-        self.skill_dim = skill_dim
-        self.logger = logger
+        super(ContDIAYN, self).__init__(train_env, eval_env, rollout_driver, skill_model, policy_learner, skill_dim, logger)
         self.num_prior_samples = num_prior_samples
 
     def get_reward(self, batch):

@@ -1,4 +1,5 @@
 from abc import ABC, abstractmethod
+import gin
 
 import tensorflow as tf
 from tf_agents.policies.tf_policy import TFPolicy
@@ -28,30 +29,40 @@ class PolicyLearner(ABC):
         """trains the policy"""
 
     @property
-    def collect_policy(self):
-        """returns current policy for collecting environment experience"""
-        return None
-
-    def anneal_alpha(self, agent):
-        step = agent.train_step_counter.numpy()
-
-        step = step % self.entropy_anneal_period if self.entropy_anneal_period is not None else step
-        alpha = self.initial_entropy - min((step / self.entropy_anneal_steps), 1) * (self.initial_entropy - self.target_entropy)
-
-        agent._reward_scale_factor = 1 / alpha
+    def train_step(self):
+        return 0
 
     @property
     def policy(self):
         """returns the current policy"""
         return None
 
+    @property
+    def collect_policy(self):
+        """returns current policy for collecting environment experience"""
+        return None
 
+    def anneal_alpha(self, agent):
+        step = agent.train_step_counter.numpy()
+        alpha = self.alpha_for_step(step)
+        agent._reward_scale_factor = 1 / alpha
+
+    def alpha_for_step(self, step):
+        step = step % self.entropy_anneal_period if self.entropy_anneal_period is not None else step
+        return self.initial_entropy - min((step / self.entropy_anneal_steps), 1) * (self.initial_entropy - self.target_entropy)
+
+    def graph_alpha(self, ax, step):
+        ys = [self.alpha_for_step(i) for i in range(step)]
+        ax.plot(range(step), ys)
+
+
+@gin.configurable
 class SACLearner(PolicyLearner):
     def __init__(self,
                  obs_spec,
                  action_spec,
                  time_step_spec,
-                 network_fc_params=(128, 128),
+                 fc_layer_params=(128, 128),
                  initial_entropy=1.0,
                  target_entropy=None,
                  entropy_anneal_steps=10000,
@@ -63,7 +74,7 @@ class SACLearner(PolicyLearner):
         """
         initialise SAC rl agent and abstract some default hyperparameters
         """
-        self.network_fc_params = network_fc_params
+        self.network_fc_params = fc_layer_params
         self.optimizer = tf.keras.optimizers.Adam
         self.learning_rate = 3e-4
         self.target_update_tau = 0.005

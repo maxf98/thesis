@@ -1,4 +1,6 @@
 from abc import ABC, abstractmethod
+import gin
+
 import tensorflow as tf
 from tensorflow import keras as tfk
 from tensorflow.keras import layers as tfkl
@@ -32,6 +34,7 @@ class SkillModel(ABC):
 Base probabilistic skill model...
 DADS implements a mixture of experts model, we can do that too, but for point environments this should suffice...
 """
+@gin.configurable
 class BaseSkillModel(SkillModel):
     def __init__(
             self,
