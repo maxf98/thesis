@@ -52,8 +52,9 @@ class SkillDiscovery(ABC):
               ):
 
         start_epoch = tf.compat.v1.train.get_global_step().numpy() + 1
+        gt.start()
 
-        for epoch in range(start_epoch, num_epochs + 1):
+        for epoch in gt.timed_for(range(start_epoch, num_epochs + 1)):
             print(f"\nepoch {epoch}")
             # collect transitions from environment -- EXPLORE
             print("Collect experience")
@@ -78,6 +79,7 @@ class SkillDiscovery(ABC):
             gt.stamp("logging", unique=False)
 
         print(gt.report())
+        gt.reset()
 
         return self.policy_learner.policy, self.skill_model
 

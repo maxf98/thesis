@@ -6,8 +6,6 @@ import tensorflow as tf
 
 from tf_agents.utils import common
 
-from scripts import point_env_vis
-
 from tf_agents.policies import policy_saver
 
 
@@ -83,7 +81,7 @@ class Logger:
             ax6.plot(range(len(alpha)), alpha, color='gray', linewidth=3)
             ax6.set(title='alpha')
 
-            fig.set_size_inches(18.5, 10.5)
+            fig.set_size_inches(12.5, 10.5)
             fig.subplots_adjust(wspace=0.2, hspace=0.2)
             fig.suptitle("Epoch {}".format(epoch), fontsize=16)
 
@@ -103,7 +101,8 @@ class Logger:
             self.save_stats(timer_stats)
 
     def initialise_checkpointer(self, agent, replay_buffer):
-        # also restores the global train step (epoch)... not the best way to do it, but it works
+        # also restores the global train step (epoch)... not the best way to do it, but it works (?)
+        # better just save the global step (epoch) separately and use this for tf_agent exclusively
         train_step = tf.compat.v1.train.get_or_create_global_step()
 
         checkpointer = common.Checkpointer(

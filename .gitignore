@@ -1,0 +1,7 @@
+logs/
+
+.idea/
+
+*.pyc
+
+*.gin

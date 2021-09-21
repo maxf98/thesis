@@ -52,6 +52,8 @@ def hierarchical_skill_discovery(num_layers: int, skill_lengths, log_dir, config
 
         agents.append(agent)
 
+        tf.compat.v1.assign(tf.compat.v1.train.get_global_step(), 0)
+
     return envs, agents
 
 
@@ -176,7 +178,7 @@ if __name__ == '__main__':
     config_root_dir = "configs/run-configs"
     configs = os.listdir(config_root_dir)
     print(configs)
-    # we should still be able to run a plain skill discovery experiment...
+
     for config in configs:
         config_path = os.path.join(config_root_dir, config)
         gin.parse_config_file(config_path)
