@@ -24,12 +24,12 @@ SACLearner.target_entropy = 0.1
 SACLearner.entropy_anneal_steps = 2000
 SACLearner.entropy_anneal_period = 2500
 
-Logger.create_fig_interval = 10
+Logger.create_fig_interval = 1
 Logger.num_samples_per_skill = 3
 
 train.num_epochs=5
 train.initial_collect_steps=1000
 train.collect_steps_per_epoch=1000
-train.train_batch_size=64
+train.batch_size=64
 train.skill_model_train_steps=64
 train.policy_learner_train_steps=128

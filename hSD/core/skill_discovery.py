@@ -1,7 +1,6 @@
 from abc import ABC, abstractmethod
 import gin
 
-from tqdm import tqdm
 import gtimer as gt
 import tensorflow as tf
 from tf_agents.environments.tf_environment import TFEnvironment
@@ -78,7 +77,7 @@ class SkillDiscovery(ABC):
             self.log_epoch(epoch, discrim_train_stats, sac_train_stats, gt.report())
             gt.stamp("logging", unique=False)
 
-        print(gt.report())
+        print(gt.report(include_itrs=False))
         gt.reset()
 
         return self.policy_learner.policy, self.skill_model

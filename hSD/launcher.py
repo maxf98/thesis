@@ -67,7 +67,7 @@ def get_base_env(env_name, point_env_step_size=0.1, point_env_box_size=1.) -> py
         return maze_env.MazeEnv(maze_type=maze_type, action_range=point_env_step_size)
     elif env_name == "hopper":
         return suite_gym.load("Hopper-v2")
-    elif env_name == "half-cheetah":
+    elif env_name == "halfcheetah":
         return suite_gym.load("HalfCheetah-v2")
     elif env_name == "ant":
         return suite_gym.load("Ant-v2")
