@@ -4,21 +4,21 @@ from core.modules import utils
 import launcher
 import numpy as np
 import matplotlib.pyplot as plt
+from scripts import point_env_vis
 
 
-def load_agent(config_path):
+def load_trained_agent(config_path):
     gin.parse_config_file(config_path)
     envs, agents = launcher.hierarchical_skill_discovery(config_path=config_path)
-    agent = agents[0]
-    base_env, policy, skill_model = agent.eval_env, agent.policy_learner.policy, agent.skill_model
+    l0_agent = agents[0]
 
-    timestep = base_env.reset()
-    z = [-0.5, 0.5]
-    for _ in range(100):
-        base_env.render()
-        aug_ts = utils.aug_time_step(timestep, z)
-        action_step = policy.action(aug_ts)
-        base_env.step(action_step.action)
+    skills = utils.discretize_continuous_space(-1, 1, 3, 2)
+
+    fig, ax = plt.subplots(1, 1, figsize=(5, 5))
+    point_env_vis.skill_vis(ax, l0_agent.eval_env, l0_agent.policy_learner.policy, skills, 3, skill_length=100)
+    point_env_vis.config_subplot(ax, box_size=2.5)
+    plt.show()
+
 
 
 def inspect_stats(dir):
@@ -39,6 +39,6 @@ def inspect_stats(dir):
 
 
 if __name__=='__main__':
-    config_path = "~/RL/thesis/hSD/logs/diayn/thesis/hopper/config.gin"
-    load_agent(config_path)
+    config_path = "/Users/maxfest/RL/thesis/hSD/logs/diayn/thesis/hiercomp/flat/config.gin"
+    load_trained_agent(config_path)
     #inspect_stats("../logs/diayn/thesis/hopper/0/stats")
