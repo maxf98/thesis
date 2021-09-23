@@ -22,10 +22,11 @@ def aug_time_step_spec(time_step_spec: ts.TimeStep, new_dim):
 
 
 def aug_time_step(time_step, z):
+    #tf.reshape(z, (1, -1))
     return ts.TimeStep(time_step.step_type,
                        time_step.reward,
                        time_step.discount,
-                       tf.concat([time_step.observation, tf.reshape(z, (1, -1))], axis=-1))
+                       tf.concat([tf.cast(time_step.observation, tf.float32), z], axis=-1))
 
 
 def discretize_continuous_space(min, max, points_per_axis, dim):

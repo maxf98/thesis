@@ -1,0 +1,15 @@
+name: hsd
+channels:
+  - conda-forge
+dependencies:
+  - python==3.8
+  - matplotlib
+  - gym
+  - cudnn
+  - pip:
+      - tensorflow
+      - tensorflow_probability
+      - tf_agents
+      - mujoco_py<1.50.2,>=1.50.1
+      - gtimer
+      - gin-config

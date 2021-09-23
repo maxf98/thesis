@@ -40,7 +40,6 @@ class Logger:
             #if tf.compat.v1.train.get_global_step() > 0:
             self.restore_skill_model_weights(sd_agent.skill_model)
             self.load_stats()
-            tf.compat.v1.assign(tf.compat.v1.train.get_global_step(), 100)
 
     def make_experiment_dirs(self):
         os.makedirs(self.log_dir)
