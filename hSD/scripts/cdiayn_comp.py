@@ -189,10 +189,10 @@ def rollout_skill_sequence(ax, policy_dir, box_size, s_norm):
 if __name__ == '__main__':
     #compare_cont_discrete_diayn()
 
-    policy_dir = "../logs/diayn/thesis/annealcoverage/0/policies/policy_60"
+    policy_dir = "../logs/diayn/thesis/hiercomp/flat/0/policies/policy_100"
 
     fig, ax = plt.subplots(1, 1, figsize=(5, 5))
-    vis_saved_policy(ax, policy_dir, cont=True, title="Hello", skill_length=10)
+    vis_saved_policy(ax, policy_dir, cont=True, title="Hello", skill_length=100, box_size=5)
     plt.show()
 
     #vis_entropy_policies()
