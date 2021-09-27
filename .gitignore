@@ -1,7 +1,6 @@
-logs/
 
 .idea/
 
 *.pyc
 
-*.gin
+configs/
