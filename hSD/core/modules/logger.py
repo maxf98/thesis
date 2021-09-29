@@ -139,10 +139,12 @@ class Logger:
             skill_model.model.load_weights(os.path.join(self.skill_weights_dir, f"weights"))
 
     def load_stats(self):
-        self.sac_stats['reward'] = np.load(os.path.join(self.stats_dir, "intrinsic_rewards.npy")).tolist()
-        self.sac_stats['loss'] = np.load(os.path.join(self.stats_dir, "policy_loss.npy")).tolist()
-        self.skill_model_stats['loss'] = np.load(os.path.join(self.stats_dir, "discrim_loss.npy")).tolist()
-        self.skill_model_stats['accuracy'] = np.load(os.path.join(self.stats_dir, "discrim_acc.npy")).tolist()
+        # again a pretty weak check...
+        if len(os.listdir(self.stats_dir)) > 0:
+            self.sac_stats['reward'] = np.load(os.path.join(self.stats_dir, "intrinsic_rewards.npy")).tolist()
+            self.sac_stats['loss'] = np.load(os.path.join(self.stats_dir, "policy_loss.npy")).tolist()
+            self.skill_model_stats['loss'] = np.load(os.path.join(self.stats_dir, "discrim_loss.npy")).tolist()
+            self.skill_model_stats['accuracy'] = np.load(os.path.join(self.stats_dir, "discrim_acc.npy")).tolist()
 
     def save_stats(self, timer_stats):
         self.save_timer_stats(timer_stats)
