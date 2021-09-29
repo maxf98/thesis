@@ -134,7 +134,9 @@ class Logger:
         if len(weights) > 0:
             skill_model.model.load_weights(weights[-1])
         """
-        skill_model.model.load_weights(os.path.join(self.skill_weights_dir, f"weights"))
+        # this just checks if something is there... can still throw!
+        if len(os.listdir(self.skill_weights_dir)) > 0:
+            skill_model.model.load_weights(os.path.join(self.skill_weights_dir, f"weights"))
 
     def load_stats(self):
         self.sac_stats['reward'] = np.load(os.path.join(self.stats_dir, "intrinsic_rewards.npy")).tolist()
