@@ -35,9 +35,9 @@ class Logger:
     def initialize_or_restore(self, sd_agent):
         if not os.path.exists(self.log_dir):
             self.make_experiment_dirs()
-            self.initialise_checkpointer(sd_agent.policy_learner.agent, sd_agent.rollout_driver.replay_buffer)
+            self.initialise_checkpointer(sd_agent.policy_learner.agent, sd_agent.rollout_driver.offline_buffer)
         else:
-            self.initialise_checkpointer(sd_agent.policy_learner.agent, sd_agent.rollout_driver.replay_buffer)
+            self.initialise_checkpointer(sd_agent.policy_learner.agent, sd_agent.rollout_driver.offline_buffer)
             # only load things if there are things to load...
             #if tf.compat.v1.train.get_global_step() > 0:
             self.restore_skill_model_weights(sd_agent.skill_model)

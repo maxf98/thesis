@@ -24,16 +24,22 @@ class DIAYN(SkillDiscovery):
         self.logger = logger
 
     def train_skill_model(self, batch_size, train_steps):
-        #TODO: train batches drawn from buffer...
-        dataset = self.rollout_driver.replay_buffer.as_dataset(
-            single_deterministic_pass=True)  # for now we train the discriminator on all experience collected in the last epoch
-        aug_obs = tf.stack(list(dataset.map(lambda x, _: x.observation)))
-        s, z = self.split_observation(aug_obs)
-        history = self.skill_model.train(s, z, batch_size=batch_size, epochs=train_steps)
-        return {'loss': history.history['loss'], 'accuracy': history.history['accuracy']}
+        dataset = self.rollout_driver.online_buffer.as_dataset(sample_batch_size=batch_size, num_steps=1)
+        dataset_iter = iter(dataset)
+
+        skill_model_stats = {'loss': [], 'accuracy': []}
+
+        for _ in range(train_steps):
+            experience, _ = next(dataset_iter)
+            s, z = self.split_observation(experience.observation)
+            history = self.skill_model.train(s, z)
+            skill_model_stats['loss'].append(history.history['loss'])
+            skill_model_stats['accuracy'].append(history.history['accuracy'])
+
+        return skill_model_stats
 
     def train_policy(self, batch_size, train_steps):
-        dataset = self.rollout_driver.replay_buffer.as_dataset(sample_batch_size=batch_size, num_steps=2)
+        dataset = self.rollout_driver.offline_buffer.as_dataset(sample_batch_size=batch_size, num_steps=2)
         dataset_iter = iter(dataset)
 
         sac_stats = {'loss': [], 'reward': []}
@@ -48,7 +54,7 @@ class DIAYN(SkillDiscovery):
         return sac_stats
 
     def split_observation(self, aug_obs):
-        s, z = tf.split(aug_obs, [-1, self.skill_dim], -1)
+        s, z = tf.split(tf.squeeze(aug_obs), [-1, self.skill_dim], -1)
         return s, z
 
     def relabel_ir(self, batch):  # expects 2-time-step traj (as in SAC)

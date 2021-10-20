@@ -20,14 +20,16 @@ class RolloutDriver(ABC):
                  skill_prior: tfp.distributions.Distribution,
                  skill_length,
                  episode_length,
-                 buffer_size):
+                 online_buffer_size,
+                 offline_buffer_size):
         """fills the replay buffer with experience from the environment, collected using the given policy"""
         self.environment = environment
         self.policy = policy
         self.skill_prior = skill_prior
         self.skill_length = skill_length
         self.episode_length = episode_length
-        self.replay_buffer = TFUniformReplayBuffer(policy.collect_data_spec, environment.batch_size, max_length=buffer_size)
+        self.online_buffer = TFUniformReplayBuffer(policy.collect_data_spec, environment.batch_size, max_length=online_buffer_size)
+        self.offline_buffer = TFUniformReplayBuffer(policy.collect_data_spec, environment.batch_size, max_length=offline_buffer_size)
 
     @abstractmethod
     def collect_experience(self, num_steps):
@@ -43,10 +45,11 @@ class BaseRolloutDriver(RolloutDriver):
                  skill_prior,
                  skill_length=100,
                  episode_length=100,
-                 buffer_size=1000,
+                 online_buffer_size=1000,
+                 offline_buffer_size=10000,
                  state_norm=False
                  ):
-        super().__init__(environment, policy, skill_prior, skill_length, episode_length, buffer_size)
+        super().__init__(environment, policy, skill_prior, skill_length, episode_length, online_buffer_size, offline_buffer_size)
         self.state_norm = state_norm
 
     def collect_experience(self, num_steps):
@@ -71,7 +74,8 @@ class BaseRolloutDriver(RolloutDriver):
             action_step = self.policy.action(aug_ts)
             next_time_step = self.environment.step(action_step.action)
             next_aug_ts = self.preprocess_time_step(next_time_step, skill, s_0)
-            self.replay_buffer.add_batch(trajectory.from_transition(aug_ts, action_step, next_aug_ts))
+            self.online_buffer.add_batch(trajectory.from_transition(aug_ts, action_step, next_aug_ts))
+            self.offline_buffer.add_batch(trajectory.from_transition(aug_ts, action_step, next_aug_ts))
 
             time_step = next_time_step
             skill_i += 1

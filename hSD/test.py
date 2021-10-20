@@ -15,7 +15,8 @@ for _ in range(2000):
 
 #env = TFPyEnvironment(suite_gym.load("Hopper-v2"))
 #pol = RandomTFPolicy(env.time_step_spec(), env.action_spec())
-env = suite_gym.load("HalfCheetah-v2")
+env = suite_gym.load("FetchSlide-v1")
+print(env.time_step_spec(), env.action_spec())
 pol = RandomPyPolicy(env.time_step_spec(), env.action_spec())
 
 ts = env.reset()

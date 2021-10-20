@@ -16,15 +16,14 @@ class SkillEnv(py_environment.PyEnvironment):
                  env: py_environment.PyEnvironment,
                  policy: py_policy.PyPolicy,
                  skill_length,
-                 skill_spec: BoundedArraySpec=None,
+                 skill_dim=None,
                  state_norm=True):
         super(SkillEnv, self).__init__()
 
         self._env = env
         self._policy = policy
         self._skill_length = skill_length
-        self._action_spec = skill_spec if skill_spec is not None else \
-            BoundedArraySpec(shape=(2,), dtype=np.float32, minimum=-1, maximum=1, name='action')
+        self._action_spec = BoundedArraySpec(shape=(skill_dim,), dtype=np.float32, minimum=-1, maximum=1, name='action')
 
         self._state = self._env.reset()
         self._state_norm = state_norm
@@ -34,9 +33,7 @@ class SkillEnv(py_environment.PyEnvironment):
         return self._action_spec
 
     def observation_spec(self):
-        """ yea this is a mess... policy trained on tfenvironment, so we expect the tfenvironment here,
-        but we implement this as a py environment... (which we then wrap in tfenvironment again lol)"""
-        return tensor_spec.to_array_spec(self._env.observation_spec())
+        return self._env.observation_spec()
 
     def _reset(self):
         return self._env.reset()
@@ -44,11 +41,13 @@ class SkillEnv(py_environment.PyEnvironment):
     def _step(self, action):
         time_step = self._env.current_time_step()
         s_0 = time_step.observation
+        time_steps = []
 
         for i in range(self._skill_length):
             aug_ts = self._preprocess_time_step(time_step, action, s_norm=s_0)
             action_step = self._policy.action(aug_ts)
             time_step = self._env.step(action_step.action)
+            time_steps.append(time_step)
 
         return time_step
 

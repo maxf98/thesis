@@ -48,7 +48,7 @@ def hierarchical_skill_discovery(num_layers: int, skill_lengths, log_dir, config
 
         # embed learned skills in environment with SkillEnv
         py_policy = py_tf_eager_policy.PyTFEagerPolicy(policy)  # convert tf policy to py policy for skill wrapper
-        envs.append(skill_environment.SkillEnv(train_env, py_policy, skill_length))
+        envs.append(skill_environment.SkillEnv(train_env, py_policy, skill_length, skill_dim=agent.skill_dim))
 
         agents.append(agent)
 

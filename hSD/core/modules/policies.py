@@ -43,3 +43,4 @@ class FixedOptionPolicy:  # doesn't actually inherit from tfpolicy, its really j
     def _distribution(self, time_step: ts.TimeStep, policy_state: types.NestedTensorSpec) -> policy_step.PolicyStep:
         aug_ts = utils.aug_time_step(time_step, self.skill)
         return self.policy.distribution(aug_ts, policy_state)
+

@@ -24,25 +24,6 @@ def load_trained_agent(config_path):
     point_env_vis.config_subplot(ax, box_size=2.5)
     plt.show()
 
-<<<<<<< HEAD
-||||||| 88f81ff
-    timestep = base_env.reset()
-    z = [-0.5, 0.5]
-    for _ in range(100):
-        base_env.render()
-        aug_ts = utils.aug_time_step(timestep, z)
-        action_step = policy.action(aug_ts)
-        base_env.step(action_step.action)
-=======
-    timestep = base_env.reset()
-    z = [-0.5, 0.5]
-    for _ in range(2000):
-        base_env.render(mode='human')
-        aug_ts = utils.aug_time_step(timestep, z)
-        action_step = policy.action(aug_ts)
-        timestep = base_env.step(action_step.action)
->>>>>>> 515a38aff1f78abb555901d219cb2b0bbdb26434
-
 
 def inspect_stats(dir):
     ir = np.load(os.path.join(dir, "intrinsic_rewards.npy")).tolist()
@@ -62,18 +43,18 @@ def inspect_stats(dir):
 
 
 def run_saved_policy():
-    latent_dim = 2
+    latent_dim = 4
     env = suite_gym.load("HalfCheetah-v2")
     ts_spec = env.time_step_spec()
     aug_obs_spec = ts_spec.observation.replace(shape=(ts_spec.observation.shape[0] + latent_dim, ))
     time_step_spec = ts_spec._replace(observation=aug_obs_spec)
     action_spec = env.action_spec()
 
-    policy_dir = "/home/max/RL/thesis/hSD/logs/halfcheetah/0/policies/policy_1000"
+    policy_dir = "/home/max/RL/thesis/hSD/logs/halfcheetah20-hd300/0/policies/policy_1000"
     pypolicy = py_tf_eager_policy.SavedModelPyTFEagerPolicy(policy_dir, time_step_spec, action_spec)
 
     timestep = env.reset()
-    z = [-1.0, 1.0]
+    z = [-1.0, 1.0, -1.0, 1.0]
     for _ in range(2000):
         env.render(mode='human')
         aug_ts = utils.aug_time_step(timestep, z)
@@ -82,20 +63,9 @@ def run_saved_policy():
 
 
 if __name__=='__main__':
-<<<<<<< HEAD
-    config_path = "/Users/maxfest/RL/thesis/hSD/logs/diayn/thesis/hiercomp/flat/config.gin"
-    load_trained_agent(config_path)
-    #inspect_stats("../logs/diayn/thesis/hopper/0/stats")
-||||||| 88f81ff
-    config_path = "~/RL/thesis/hSD/logs/diayn/thesis/hopper/config.gin"
-    load_agent(config_path)
-    #inspect_stats("../logs/diayn/thesis/hopper/0/stats")
-=======
     config_path = "/home/max/RL/thesis/hSD/logs/hopper/config.gin"
     #load_agent(config_path)
     #inspect_stats("../logs/diayn/thesis/hopper/0/stats")
 
     run_saved_policy()
 
-    #load_agent(config_path)
->>>>>>> 515a38aff1f78abb555901d219cb2b0bbdb26434
