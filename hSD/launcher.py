@@ -71,6 +71,14 @@ def get_base_env(env_name, point_env_step_size=0.1, point_env_box_size=1.) -> py
         return suite_gym.load("HalfCheetah-v2")
     elif env_name == "ant":
         return suite_gym.load("Ant-v2")
+    elif env_name == "fetchreach":
+        return suite_gym.load("FetchReach-v1")
+    elif env_name == "fetchpush":
+        return suite_gym.load("FetchPush-v1")
+    elif env_name == "fetchpickandplace":
+        return suite_gym.load("FetchPickAndPlace-v1")
+    elif env_name == "fetchslide":
+        return suite_gym.load("FetchSlide-v1")
 
 
 def create_log_dir(log_dir, config_path):
@@ -104,7 +112,7 @@ def initialise_skill_discovery_agent(train_env, eval_env, skill_length, objectiv
                                skill_prior_distribution,
                                skill_length=skill_length)
 
-    skill_model = init_skill_model(objective, skill_prior, train_env.observation_spec().shape[0], skill_dim)
+    skill_model = init_skill_model(objective, skill_prior, utils.hide_goal(train_env.observation_spec()).shape[0], skill_dim)
 
     agent = init_skill_discovery(objective, skill_prior, train_env, eval_env, driver, skill_model, policy_learner,
                                  skill_dim, logger)
@@ -116,11 +124,12 @@ def initialise_skill_discovery_agent(train_env, eval_env, skill_length, objectiv
 
 def parse_env_specs(env, skill_dim, objective):
     obs_spec, action_spec, time_step_spec = env.observation_spec(), env.action_spec(), env.time_step_spec()
+    obs_spec = utils.hide_goal(obs_spec)
     obs_dim = obs_spec.shape.as_list()[0]
 
     if objective == 's->z' or objective == 'sz->s_p':  # diayn, dads
         obs_spec = utils.aug_obs_spec(obs_spec, obs_dim + skill_dim)
-        time_step_spec = utils.aug_time_step_spec(time_step_spec, obs_dim + skill_dim)
+        time_step_spec = time_step_spec._replace(observation=obs_spec)
     else:
         raise ValueError("invalid objective")
     return obs_spec, action_spec, time_step_spec

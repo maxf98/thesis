@@ -14,8 +14,8 @@ import numpy as np
 
 class SkillModel(ABC):
     @abstractmethod
-    def train(self, x, y=None, batch_size=32, epochs=1):
-        """perform model(/generator) training"""
+    def train(self, x, y=None):
+        """perform model training"""
 
     @abstractmethod
     def call(self, x):
@@ -112,8 +112,8 @@ class BaseSkillModel(SkillModel):
 
         return x
 
-    def train(self, x, y=None, batch_size=32, epochs=1):
-        return self.model.fit(x, y, batch_size=batch_size, epochs=epochs, verbose=0)
+    def train(self, x, y=None):
+        return self.model.fit(x, y, verbose=0)
 
     def call(self, x):
         return self.model(x)

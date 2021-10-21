@@ -7,7 +7,6 @@ from tf_agents.replay_buffers.tf_uniform_replay_buffer import TFUniformReplayBuf
 from tf_agents.trajectories import trajectory
 from tf_agents.trajectories import time_step as ts
 
-
 from core.modules import utils
 import tensorflow_probability as tfp
 import tensorflow as tf
@@ -53,36 +52,41 @@ class BaseRolloutDriver(RolloutDriver):
         self.state_norm = state_norm
 
     def collect_experience(self, num_steps):
-        time_step = self.environment.reset()
-        s_0 = time_step.observation
-        skill = self.skill_prior.sample()
-        skill_i, episode_i = 0, 0
+        skills = [self.skill_prior.sample(self.episode_length // self.skill_length) for _ in range(num_steps // self.episode_length)]
+        traj_observers = [self.online_buffer.add_batch, self.offline_buffer.add_batch]
+        self._collect_experience_for_skills(self.environment, self.policy, self.skill_length,
+                                            self.preprocess_time_step, traj_observers, skills)
 
-        for _ in range(num_steps):
-            if skill_i == self.skill_length:
-                skill_i = 0
-                skill = self.skill_prior.sample()
-                s_0 = time_step.observation
+    @staticmethod
+    def _collect_experience_for_skills(env, policy, skill_length, preprocess_fn, traj_observer, skills, render=False):
+        """skills is a 2d array, each array contains skills to be executed within one episode
+        after the episode, reset environment and run next skill sequence"""
+        time_step = env.reset()
 
-            if episode_i == self.episode_length or time_step.is_last():
-                skill_i, episode_i = 0, 0
-                skill = self.skill_prior.sample()
-                time_step = self.environment.reset()
-                s_0 = time_step.observation
+        for episode_i in range(len(skills)):
+            for skill_i in range(len(skills[0])):
 
-            aug_ts = self.preprocess_time_step(time_step, skill, s_0)
-            action_step = self.policy.action(aug_ts)
-            next_time_step = self.environment.step(action_step.action)
-            next_aug_ts = self.preprocess_time_step(next_time_step, skill, s_0)
-            self.online_buffer.add_batch(trajectory.from_transition(aug_ts, action_step, next_aug_ts))
-            self.offline_buffer.add_batch(trajectory.from_transition(aug_ts, action_step, next_aug_ts))
+                skill = skills[episode_i][skill_i]
+                s_0 = utils.hide_goal(time_step.observation)
 
-            time_step = next_time_step
-            skill_i += 1
-            episode_i += 1
+                for i in range(skill_length):
+                    if render:
+                        env.render(mode='human')
+
+                    aug_ts = preprocess_fn(time_step, skill, s_0)
+                    action_step = policy.action(aug_ts)
+                    next_time_step = env.step(action_step.action)
+                    next_aug_ts = preprocess_fn(next_time_step, skill, s_0)
+                    traj = trajectory.from_transition(aug_ts, action_step, next_aug_ts)
+                    for fn in traj_observer:
+                        fn(traj)
+
+                    time_step = next_time_step
+            time_step = env.reset()
 
     def preprocess_time_step(self, time_step, skill, s_norm):
-        obs = time_step.observation - s_norm if self.state_norm else time_step.observation
+        obs = utils.hide_goal(time_step.observation)
+        obs = obs - s_norm if self.state_norm else obs
         obs = tf.cast(obs, tf.float32)
         return ts.TimeStep(time_step.step_type,
                            time_step.reward,
