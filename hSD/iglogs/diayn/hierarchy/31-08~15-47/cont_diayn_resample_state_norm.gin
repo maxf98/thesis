@@ -1,0 +1,31 @@
+run_experiment.objective = 's->z'
+run_experiment.skill_prior = 'cont_uniform'
+run_experiment.skill_dim = 2
+
+init_env.step_size = 0.05
+
+init_rollout_driver.buffer_size = 1000
+init_rollout_driver.skill_length = 20
+init_rollout_driver.episode_length = 100
+init_rollout_driver.state_norm = True
+
+init_skill_model.hidden_dim = (128, 128)
+init_skill_model.fix_variance = True  # only continuous skill models
+
+init_policy_learner.rl_alg = 'SAC'
+init_policy_learner.fc_layer_params = (128, 128)
+init_policy_learner.target_entropy = None
+init_policy_learner.reward_scale_factor = 1.0
+
+init_logger.create_logs = True
+init_logger.log_dir = 'logs/diayn/hierarchy'
+init_logger.create_fig_interval = 10
+init_logger.skill_length = 20
+init_logger.num_samples_per_skill = 3
+
+train_skill_discovery.num_epochs=50
+train_skill_discovery.initial_collect_steps=1000
+train_skill_discovery.collect_steps_per_epoch=1000
+train_skill_discovery.train_batch_size=64
+train_skill_discovery.skill_model_train_steps=64
+train_skill_discovery.policy_learner_train_steps=128

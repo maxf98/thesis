@@ -1,6 +1,8 @@
 import os
 
 import tensorflow as tf
+import tensorflow_probability as tfp
+tfd = tfp.distributions
 import numpy as np
 import matplotlib.pyplot as plt
 
@@ -8,6 +10,7 @@ from env import point_environment
 from scripts import point_env_vis
 
 from tf_agents.environments.tf_py_environment import TFPyEnvironment
+from tf_agents.policies.random_py_policy import RandomPyPolicy
 
 from core.modules import utils
 
@@ -41,10 +44,10 @@ def compare_cont_discrete_diayn():
     plt.show()
 
 
-def vis_saved_policy(ax, policy_dir, cont=True, title=None, env=None, skill_length=25, box_size=None):
+def vis_saved_policy(ax, policy_dir, cont=True, title=None, env=None, skill_length=25, step_size=0.1, box_size=None):
     policy = tf.compat.v2.saved_model.load(policy_dir)
     if env is None:
-        env = TFPyEnvironment(point_environment.PointEnv(step_size=0.1, box_size=box_size))
+        env = TFPyEnvironment(point_environment.PointEnv(step_size=step_size, box_size=box_size))
     if cont:
         skills = utils.discretize_continuous_space(-1, 1, 3, 2)
     else:
@@ -185,15 +188,104 @@ def rollout_skill_sequence(ax, policy_dir, box_size, s_norm):
     point_env_vis.config_subplot(ax, box_size=box_size)
 
 
+def vis_rand_pol_states(ax, step_size=0.1, rollout_length=10, num_rollouts=100):
+    box_size = step_size * rollout_length
+    env = point_environment.PointEnv(step_size=step_size, box_size=box_size)
+    policy = RandomPyPolicy(time_step_spec=env.time_step_spec(), action_spec=env.action_spec())
+
+    states = []
+
+    for _ in range(num_rollouts):
+        timestep = env.reset()
+
+        for _ in range(rollout_length):
+            action_step = policy.action(timestep)
+            timestep = env.step(action_step.action)
+            states.append(timestep.observation)
+
+    xs, ys = [s[0] for s in states], [s[1] for s in states]
+    ax.scatter(xs, ys, color='blue', alpha=0.8, s=0.5)
+
+    ax.set_xlim(-box_size, box_size)
+    ax.set_ylim(-box_size, box_size)
+    ax.set_xticks([-box_size, 0., box_size])
+    ax.set_yticks([-box_size, 0., box_size])
+    ax.set_aspect('equal', adjustable='box')
+
+
+def skill_pol_coverage(ax, policy, cont=True, step_size=0.1, skill_length=10, num_rollouts=100):
+    box_size = 1.
+    env = TFPyEnvironment(point_environment.PointEnv(step_size=step_size, box_size=box_size))
+
+    if cont:
+        skill_dim = 2
+        distr = tfd.Uniform(low=[-1.] * skill_dim, high=[1.] * skill_dim)
+    else:
+        skill_dim = 8
+        distr = tfd.OneHotCategorical(logits=tf.ones(skill_dim), dtype=tf.float32)
+
+    skills = distr.sample(num_rollouts)
+    trajs = point_env_vis.collect_skill_trajectories(env, policy, skills, 1, skill_length)
+    points = np.reshape(trajs, (num_rollouts * skill_length, 2))
+    xs, ys = [s[0] for s in points], [s[1] for s in points]
+    ax.scatter(xs, ys, color='blue', alpha=0.8, s=0.5)
+
+    ax.set_xlim(-box_size, box_size)
+    ax.set_ylim(-box_size, box_size)
+    ax.set_xticks([-box_size, 0., box_size])
+    ax.set_yticks([-box_size, 0., box_size])
+    ax.set_aspect('equal', adjustable='box')
+
+
+def comp_rand_pol_coverage():
+    fig, (ax1, ax2, ax3) = plt.subplots(1, 3)
+    vis_rand_pol_states(ax1, step_size=0.01, rollout_length=100, num_rollouts=100)
+    ax1.set_title("δ = 0.01, T = 100")
+    vis_rand_pol_states(ax2, step_size=0.1, rollout_length=10, num_rollouts=100)
+    ax2.set_title("δ = 0.1, T = 10")
+    vis_rand_pol_states(ax3, step_size=1., rollout_length=1, num_rollouts=100)
+    ax3.set_title("δ = 1, T = 1")
+
+    plt.show()
+
+
+def comp_traj_length():
+    policy_10_dir = "../iglogs/diayn/thesis/traj_length/traj10/0/policies/policy_100"
+    policy_10 = tf.compat.v2.saved_model.load(policy_10_dir)
+    policy_20_dir = "../iglogs/diayn/thesis/traj_length/traj20/0/policies/policy_60"
+    policy_20 = tf.compat.v2.saved_model.load(policy_20_dir)
+    policy_100_dir = "../iglogs/diayn/thesis/traj_length/traj100/0/policies/policy_80"
+    policy_100 = tf.compat.v2.saved_model.load(policy_100_dir)
+
+
+    fig, ((ax1, ax2, ax3), (ax4, ax5, ax6), (ax7, ax8, ax9)) = plt.subplots(3, 3)
+
+    vis_saved_policy(ax1, policy_10_dir, skill_length=10, step_size=0.1, box_size=1.)
+    vis_saved_policy(ax2, policy_20_dir, skill_length=20, step_size=0.05, box_size=1.)
+    vis_saved_policy(ax3, policy_100_dir, skill_length=100, step_size=0.01, box_size=1.)
+
+    skill_pol_coverage(ax4, policy_10, step_size=0.1, skill_length=10, num_rollouts=1000)
+    skill_pol_coverage(ax5, policy_10, step_size=0.05, skill_length=20, num_rollouts=500)
+    skill_pol_coverage(ax6, policy_10, step_size=0.01, skill_length=100, num_rollouts=100)
+
+    vis_rand_pol_states(ax7, step_size=0.1, rollout_length=10, num_rollouts=100)
+    vis_rand_pol_states(ax8, step_size=0.05, rollout_length=20, num_rollouts=100)
+    vis_rand_pol_states(ax9, step_size=0.01, rollout_length=100, num_rollouts=100)
+
+    plt.show()
+
 
 if __name__ == '__main__':
     #compare_cont_discrete_diayn()
-
+    """
     policy_dir = "../logs/diayn/thesis/hiercomp/flat/0/policies/policy_100"
 
     fig, ax = plt.subplots(1, 1, figsize=(5, 5))
     vis_saved_policy(ax, policy_dir, cont=True, title="Hello", skill_length=100, box_size=5)
     plt.show()
+    """
+
+    comp_traj_length()
 
     #vis_entropy_policies()
 

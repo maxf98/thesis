@@ -1,0 +1,35 @@
+hierarchical_skill_discovery.num_layers = 2
+hierarchical_skill_discovery.skill_lengths = (7,7)
+hierarchical_skill_discovery.log_dir = "logs/diayn/thesis/test"
+
+get_base_env.env_name = "point_env"
+get_base_env.point_env_step_size = 0.02
+get_base_env.point_env_box_size = 10
+
+initialise_skill_discovery_agent.objective = 's->z'
+initialise_skill_discovery_agent.skill_prior = 'cont_uniform'
+initialise_skill_discovery_agent.skill_dim = 2
+
+BaseRolloutDriver.buffer_size = 1000
+BaseRolloutDriver.episode_length = 28
+BaseRolloutDriver.state_norm = True
+
+BaseSkillModel.fc_layer_params = (128, 128)
+BaseSkillModel.fix_variance = True  # only continuous skill models
+
+SACLearner.fc_layer_params = (128, 128)
+SACLearner.alpha_loss_weight = 0.0  # if set to 0, fixed entropy version of SAC
+SACLearner.initial_entropy = 10.0
+SACLearner.target_entropy = 0.1
+SACLearner.entropy_anneal_steps = 5000
+SACLearner.entropy_anneal_period = None
+
+Logger.create_fig_interval = 1
+Logger.num_samples_per_skill = 3
+
+train.num_epochs=2
+train.initial_collect_steps=1000
+train.collect_steps_per_epoch=1000
+train.batch_size=64
+train.skill_model_train_steps=64
+train.policy_learner_train_steps=128

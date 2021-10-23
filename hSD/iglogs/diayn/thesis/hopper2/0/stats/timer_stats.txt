@@ -1,0 +1,17 @@
+
+
+---Begin Timer Report (root)---
+Timer Name:          root (running)
+Total Time (s):      21.81
+Stamps Sum:          21.81
+Self Time (Agg.):    3.593e-05
+
+
+Intervals
+---------
+exploration ........ 13.4
+skill model training  1.607
+rl training ........ 6.809
+
+---End Timer Report (root)---
+

@@ -1,0 +1,144 @@
+dict_value {
+  fields {
+    key: "collect_data_spec"
+    value {
+      named_tuple_value {
+        name: "Trajectory"
+        values {
+          key: "step_type"
+          value {
+            tensor_spec_value {
+              name: "step_type"
+              shape {
+              }
+              dtype: DT_INT32
+            }
+          }
+        }
+        values {
+          key: "observation"
+          value {
+            bounded_tensor_spec_value {
+              name: "augmented observation"
+              shape {
+                dim {
+                  size: 4
+                }
+              }
+              dtype: DT_FLOAT
+              minimum {
+                dtype: DT_FLOAT
+                tensor_shape {
+                }
+                float_val: -10.0
+              }
+              maximum {
+                dtype: DT_FLOAT
+                tensor_shape {
+                }
+                float_val: 10.0
+              }
+            }
+          }
+        }
+        values {
+          key: "action"
+          value {
+            bounded_tensor_spec_value {
+              name: "action"
+              shape {
+                dim {
+                  size: 2
+                }
+              }
+              dtype: DT_FLOAT
+              minimum {
+                dtype: DT_FLOAT
+                tensor_shape {
+                }
+<<<<<<< HEAD:hSD/logs/diayn/thesis/hiercomp/onelayer/0/policies/policy_20/policy_specs.pbtxt
+                float_val: -0.02
+||||||| 88f80e9:hSD/logs/diayn/thesis/test/0/policies/policy_20/policy_specs.pbtxt
+                float_val: -0.1
+=======
+                float_val: -0.05
+>>>>>>> 7b38bbedef990ec6448dc9ae9db7e5eda3f67898:hSD/logs/diayn/thesis/anneal/0/policies/policy_10/policy_specs.pbtxt
+              }
+              maximum {
+                dtype: DT_FLOAT
+                tensor_shape {
+                }
+<<<<<<< HEAD:hSD/logs/diayn/thesis/hiercomp/onelayer/0/policies/policy_20/policy_specs.pbtxt
+                float_val: 0.02
+||||||| 88f80e9:hSD/logs/diayn/thesis/test/0/policies/policy_20/policy_specs.pbtxt
+                float_val: 0.1
+=======
+                float_val: 0.05
+>>>>>>> 7b38bbedef990ec6448dc9ae9db7e5eda3f67898:hSD/logs/diayn/thesis/anneal/0/policies/policy_10/policy_specs.pbtxt
+              }
+            }
+          }
+        }
+        values {
+          key: "policy_info"
+          value {
+            tuple_value {
+            }
+          }
+        }
+        values {
+          key: "next_step_type"
+          value {
+            tensor_spec_value {
+              name: "step_type"
+              shape {
+              }
+              dtype: DT_INT32
+            }
+          }
+        }
+        values {
+          key: "reward"
+          value {
+            tensor_spec_value {
+              name: "reward"
+              shape {
+              }
+              dtype: DT_FLOAT
+            }
+          }
+        }
+        values {
+          key: "discount"
+          value {
+            bounded_tensor_spec_value {
+              name: "discount"
+              shape {
+              }
+              dtype: DT_FLOAT
+              minimum {
+                dtype: DT_FLOAT
+                tensor_shape {
+                }
+                float_val: 0.0
+              }
+              maximum {
+                dtype: DT_FLOAT
+                tensor_shape {
+                }
+                float_val: 1.0
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+  fields {
+    key: "policy_state_spec"
+    value {
+      tuple_value {
+      }
+    }
+  }
+}

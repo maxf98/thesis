@@ -79,6 +79,10 @@ def get_base_env(env_name, point_env_step_size=0.1, point_env_box_size=1.) -> py
         return suite_gym.load("FetchPickAndPlace-v1")
     elif env_name == "fetchslide":
         return suite_gym.load("FetchSlide-v1")
+    elif env_name == "mountaincar":
+        return suite_gym.load("MountainCarContinuous-v0")
+
+    raise ValueError("invalid environment name")
 
 
 def create_log_dir(log_dir, config_path):
@@ -86,7 +90,7 @@ def create_log_dir(log_dir, config_path):
         os.makedirs(log_dir)
         shutil.copy(config_path, log_dir)
     else:
-        print("directory exists already, you probably wanna handle that somehow...")
+        print("directory exists, picking up where we left off...")
 
 
 def get_layer_log_dir(log_dir, layer):

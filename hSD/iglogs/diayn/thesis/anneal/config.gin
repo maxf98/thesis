@@ -1,0 +1,85 @@
+hierarchical_skill_discovery.num_layers = 1
+<<<<<<< HEAD:hSD/logs/diayn/thesis/hiercomp/onelayer/config2.gin
+hierarchical_skill_discovery.skill_lengths = (49,)
+hierarchical_skill_discovery.log_dir = "logs/diayn/thesis/hiercomp/onelayer"
+||||||| 88f80e9:hSD/configs/run-configs/config2.gin
+hierarchical_skill_discovery.skill_lengths = (10,)
+hierarchical_skill_discovery.log_dir = "logs/diayn/thesis/test"
+=======
+hierarchical_skill_discovery.skill_lengths = (25,)
+hierarchical_skill_discovery.log_dir = "logs/diayn/thesis/anneal"
+>>>>>>> 7b38bbedef990ec6448dc9ae9db7e5eda3f67898:hSD/logs/diayn/thesis/anneal/config.gin
+
+get_base_env.env_name = "point_env"
+<<<<<<< HEAD:hSD/logs/diayn/thesis/hiercomp/onelayer/config2.gin
+get_base_env.point_env_step_size = 0.02
+get_base_env.point_env_box_size = 10
+||||||| 88f80e9:hSD/configs/run-configs/config2.gin
+get_base_env.point_env_step_size = 0.1
+get_base_env.point_env_box_size = 1
+=======
+get_base_env.point_env_step_size = 0.05
+get_base_env.point_env_box_size = 1
+>>>>>>> 7b38bbedef990ec6448dc9ae9db7e5eda3f67898:hSD/logs/diayn/thesis/anneal/config.gin
+
+initialise_skill_discovery_agent.objective = 's->z'
+initialise_skill_discovery_agent.skill_prior = 'cont_uniform'
+initialise_skill_discovery_agent.skill_dim = 2
+
+<<<<<<< HEAD:hSD/logs/diayn/thesis/hiercomp/onelayer/config2.gin
+BaseRolloutDriver.buffer_size = 1000
+BaseRolloutDriver.episode_length = 49
+||||||| 88f80e9:hSD/configs/run-configs/config2.gin
+BaseRolloutDriver.buffer_size = 500
+BaseRolloutDriver.episode_length = 10
+=======
+BaseRolloutDriver.buffer_size = 1000
+BaseRolloutDriver.episode_length = 25
+>>>>>>> 7b38bbedef990ec6448dc9ae9db7e5eda3f67898:hSD/logs/diayn/thesis/anneal/config.gin
+BaseRolloutDriver.state_norm = False
+
+BaseSkillModel.fc_layer_params = (128, 128)
+BaseSkillModel.fix_variance = True  # only continuous skill models
+
+SACLearner.fc_layer_params = (128, 128)
+<<<<<<< HEAD:hSD/logs/diayn/thesis/hiercomp/onelayer/config2.gin
+SACLearner.alpha_loss_weight = 0.0  # if set to 0, fixed entropy version of SAC
+SACLearner.initial_entropy = 10.0
+SACLearner.target_entropy = 0.1
+||||||| 88f80e9:hSD/configs/run-configs/config2.gin
+SACLearner.alpha_loss_weight = 0.0  # if set to 0, fixed entropy version of SAC
+SACLearner.initial_entropy = 10.0
+SACLearner.target_entropy = 0.1  # for EC-SAC, default is something like -1/dim(A)
+=======
+SACLearner.alpha_loss_weight = 0  # if set to 0, fixed entropy version of SAC
+SACLearner.initial_entropy = 2.0
+SACLearner.target_entropy = 0.01
+>>>>>>> 7b38bbedef990ec6448dc9ae9db7e5eda3f67898:hSD/logs/diayn/thesis/anneal/config.gin
+SACLearner.entropy_anneal_steps = 5000
+SACLearner.entropy_anneal_period = None
+
+<<<<<<< HEAD:hSD/logs/diayn/thesis/hiercomp/onelayer/config2.gin
+Logger.create_fig_interval = 10
+||||||| 88f80e9:hSD/configs/run-configs/config2.gin
+Logger.create_fig_interval = 1
+=======
+Logger.create_fig_interval = 5
+>>>>>>> 7b38bbedef990ec6448dc9ae9db7e5eda3f67898:hSD/logs/diayn/thesis/anneal/config.gin
+Logger.num_samples_per_skill = 3
+
+<<<<<<< HEAD:hSD/logs/diayn/thesis/hiercomp/onelayer/config2.gin
+train.num_epochs=100
+train.initial_collect_steps=1000
+train.collect_steps_per_epoch=1000
+||||||| 88f80e9:hSD/configs/run-configs/config2.gin
+train.num_epochs=51
+train.initial_collect_steps=500
+train.collect_steps_per_epoch=500
+=======
+train.num_epochs=70
+train.initial_collect_steps=1000
+train.collect_steps_per_epoch=1000
+>>>>>>> 7b38bbedef990ec6448dc9ae9db7e5eda3f67898:hSD/logs/diayn/thesis/anneal/config.gin
+train.batch_size=64
+train.skill_model_train_steps=64
+train.policy_learner_train_steps=128
