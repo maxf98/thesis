@@ -188,7 +188,7 @@ def rollout_skill_sequence(ax, policy_dir, box_size, s_norm):
     point_env_vis.config_subplot(ax, box_size=box_size)
 
 
-def vis_rand_pol_states(ax, step_size=0.1, rollout_length=10, num_rollouts=100):
+def vis_rand_pol_states(ax, step_size=0.1, rollout_length=10, num_rollouts=100, keep_every=1, color='blue', alpha=0.8):
     box_size = step_size * rollout_length
     env = point_environment.PointEnv(step_size=step_size, box_size=box_size)
     policy = RandomPyPolicy(time_step_spec=env.time_step_spec(), action_spec=env.action_spec())
@@ -203,8 +203,9 @@ def vis_rand_pol_states(ax, step_size=0.1, rollout_length=10, num_rollouts=100):
             timestep = env.step(action_step.action)
             states.append(timestep.observation)
 
+    states = states[::keep_every]
     xs, ys = [s[0] for s in states], [s[1] for s in states]
-    ax.scatter(xs, ys, color='blue', alpha=0.8, s=0.5)
+    ax.scatter(xs, ys, color=color, alpha=alpha, s=0.5)
 
     ax.set_xlim(-box_size, box_size)
     ax.set_ylim(-box_size, box_size)
@@ -213,7 +214,7 @@ def vis_rand_pol_states(ax, step_size=0.1, rollout_length=10, num_rollouts=100):
     ax.set_aspect('equal', adjustable='box')
 
 
-def skill_pol_coverage(ax, policy, cont=True, step_size=0.1, skill_length=10, num_rollouts=100):
+def skill_pol_coverage(ax, policy, cont=True, step_size=0.1, skill_length=10, num_rollouts=100, keep_every=1, color='blue', alpha=0.8):
     box_size = 1.
     env = TFPyEnvironment(point_environment.PointEnv(step_size=step_size, box_size=box_size))
 
@@ -227,8 +228,9 @@ def skill_pol_coverage(ax, policy, cont=True, step_size=0.1, skill_length=10, nu
     skills = distr.sample(num_rollouts)
     trajs = point_env_vis.collect_skill_trajectories(env, policy, skills, 1, skill_length)
     points = np.reshape(trajs, (num_rollouts * skill_length, 2))
+    points = points[::keep_every]
     xs, ys = [s[0] for s in points], [s[1] for s in points]
-    ax.scatter(xs, ys, color='blue', alpha=0.8, s=0.5)
+    ax.scatter(xs, ys, color=color, alpha=alpha, s=0.5)
 
     ax.set_xlim(-box_size, box_size)
     ax.set_ylim(-box_size, box_size)
@@ -250,28 +252,43 @@ def comp_rand_pol_coverage():
 
 
 def comp_traj_length():
-    policy_10_dir = "../iglogs/diayn/thesis/traj_length/traj10/0/policies/policy_100"
+    policy_10_dir = "../logs/traj_length/l1/0/policies/policy_10"
     policy_10 = tf.compat.v2.saved_model.load(policy_10_dir)
-    policy_20_dir = "../iglogs/diayn/thesis/traj_length/traj20/0/policies/policy_60"
+    policy_20_dir = "../logs/traj_length/l2-rb/0/policies/policy_10"
     policy_20 = tf.compat.v2.saved_model.load(policy_20_dir)
-    policy_100_dir = "../iglogs/diayn/thesis/traj_length/traj100/0/policies/policy_80"
+    policy_100_dir = "../logs/traj_length/l3-rb/0/policies/policy_10"
     policy_100 = tf.compat.v2.saved_model.load(policy_100_dir)
 
+    policy_20_dir = "../logs/traj_length/l2-rb/0/policies/policy_30"
+    policy_20_f = tf.compat.v2.saved_model.load(policy_20_dir)
+    policy_100_dir = "../logs/traj_length/l3-rb/0/policies/policy_100"
+    policy_100_f = tf.compat.v2.saved_model.load(policy_100_dir)
 
     fig, ((ax1, ax2, ax3), (ax4, ax5, ax6), (ax7, ax8, ax9)) = plt.subplots(3, 3)
 
     vis_saved_policy(ax1, policy_10_dir, skill_length=10, step_size=0.1, box_size=1.)
-    vis_saved_policy(ax2, policy_20_dir, skill_length=20, step_size=0.05, box_size=1.)
+    vis_saved_policy(ax2, policy_20_dir, skill_length=25, step_size=0.04, box_size=1.)
     vis_saved_policy(ax3, policy_100_dir, skill_length=100, step_size=0.01, box_size=1.)
 
-    skill_pol_coverage(ax4, policy_10, step_size=0.1, skill_length=10, num_rollouts=1000)
-    skill_pol_coverage(ax5, policy_10, step_size=0.05, skill_length=20, num_rollouts=500)
-    skill_pol_coverage(ax6, policy_10, step_size=0.01, skill_length=100, num_rollouts=100)
+    skill_pol_coverage(ax4, policy_10, step_size=0.1, skill_length=10, num_rollouts=100, keep_every=1, color='green', alpha=0.5)
+    skill_pol_coverage(ax5, policy_20, step_size=0.04, skill_length=25, num_rollouts=100, keep_every=2, color='green', alpha=0.5)
+    skill_pol_coverage(ax6, policy_100, step_size=0.01, skill_length=100, num_rollouts=100, keep_every=10, color='green', alpha=0.5)
 
-    vis_rand_pol_states(ax7, step_size=0.1, rollout_length=10, num_rollouts=100)
-    vis_rand_pol_states(ax8, step_size=0.05, rollout_length=20, num_rollouts=100)
-    vis_rand_pol_states(ax9, step_size=0.01, rollout_length=100, num_rollouts=100)
+    vis_rand_pol_states(ax4, step_size=0.1, rollout_length=10, num_rollouts=100, keep_every=1, color='blue', alpha=0.5)
+    vis_rand_pol_states(ax5, step_size=0.04, rollout_length=25, num_rollouts=100, keep_every=2, color='blue', alpha=0.5)
+    vis_rand_pol_states(ax6, step_size=0.01, rollout_length=100, num_rollouts=100, keep_every=10, color='blue', alpha=0.5)
 
+    skill_pol_coverage(ax7, policy_10, step_size=0.1, skill_length=10, num_rollouts=100, keep_every=1, color='green', alpha=0.5)
+    skill_pol_coverage(ax8, policy_20_f, step_size=0.04, skill_length=25, num_rollouts=100, keep_every=2, color='green', alpha=0.5)
+    skill_pol_coverage(ax9, policy_100_f, step_size=0.01, skill_length=100, num_rollouts=100, keep_every=10, color='green', alpha=0.5)
+
+    vis_rand_pol_states(ax7, step_size=0.1, rollout_length=10, num_rollouts=100, keep_every=1, color='blue', alpha=0.5)
+    vis_rand_pol_states(ax8, step_size=0.04, rollout_length=25, num_rollouts=100, keep_every=2, color='blue', alpha=0.5)
+    vis_rand_pol_states(ax9, step_size=0.01, rollout_length=100, num_rollouts=100, keep_every=10, color='blue', alpha=0.5)
+
+    for ax in fig.get_axes():
+        ax.label_outer()
+        
     plt.show()
 
 
