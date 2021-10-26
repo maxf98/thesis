@@ -23,7 +23,7 @@ tfd = tensorflow_probability.distributions
 
 
 @gin.configurable
-def hierarchical_skill_discovery(num_layers: int, skill_lengths, log_dir, config_path, training=False):
+def hierarchical_skill_discovery(num_layers: int, skill_lengths, log_dir, config_path, training=True):
     """if num_layers == 1 we are simply performing skill discovery (no hierarchy)"""
     envs = [get_base_env()]
     agents = []

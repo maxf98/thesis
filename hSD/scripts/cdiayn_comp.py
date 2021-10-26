@@ -264,12 +264,13 @@ def comp_traj_length():
     policy_100_dir = "../logs/traj_length/l3-rb/0/policies/policy_100"
     policy_100_f = tf.compat.v2.saved_model.load(policy_100_dir)
 
-    fig, ((ax1, ax2, ax3), (ax4, ax5, ax6), (ax7, ax8, ax9)) = plt.subplots(3, 3)
-
+    # fig, ((ax1, ax2, ax3), (ax4, ax5, ax6), (ax7, ax8, ax9)) = plt.subplots(3, 3)
+    fig, ((ax4, ax5, ax6), (ax7, ax8, ax9)) = plt.subplots(2, 3)
+    """
     vis_saved_policy(ax1, policy_10_dir, skill_length=10, step_size=0.1, box_size=1.)
     vis_saved_policy(ax2, policy_20_dir, skill_length=25, step_size=0.04, box_size=1.)
     vis_saved_policy(ax3, policy_100_dir, skill_length=100, step_size=0.01, box_size=1.)
-
+    """
     skill_pol_coverage(ax4, policy_10, step_size=0.1, skill_length=10, num_rollouts=100, keep_every=1, color='green', alpha=0.5)
     skill_pol_coverage(ax5, policy_20, step_size=0.04, skill_length=25, num_rollouts=100, keep_every=2, color='green', alpha=0.5)
     skill_pol_coverage(ax6, policy_100, step_size=0.01, skill_length=100, num_rollouts=100, keep_every=10, color='green', alpha=0.5)
@@ -286,23 +287,56 @@ def comp_traj_length():
     vis_rand_pol_states(ax8, step_size=0.04, rollout_length=25, num_rollouts=100, keep_every=2, color='blue', alpha=0.5)
     vis_rand_pol_states(ax9, step_size=0.01, rollout_length=100, num_rollouts=100, keep_every=10, color='blue', alpha=0.5)
 
+    fontdict = {'fontsize': 8}
+    ax4.set_title("δ = 0.1, T = 10, E=10", fontdict=fontdict)
+    ax5.set_title("δ = 0.04, T = 25, E=10", fontdict=fontdict)
+    ax6.set_title("δ = 0.01, T = 100, E=10", fontdict=fontdict)
+
+    ax7.set_title("δ = 0.1, T = 10, E=10", fontdict=fontdict)
+    ax8.set_title("δ = 0.04, T = 25, E=30", fontdict=fontdict)
+    ax9.set_title("δ = 0.01, T = 100, E=100", fontdict=fontdict)
+
     for ax in fig.get_axes():
         ax.label_outer()
-        
-    plt.show()
+
+    fig.savefig("../screenshots/exploration_vs_trajlength")
+
+
+def vis_reach_goal_state_behaviour():
+    policy_dir1 = "../logs/traj_length/l1d/0/policies/policy_10"
+    policy_dir2 = "../logs/traj_length/l1d/0/policies/policy_30"
+    policy_dir3 = "../logs/traj_length/l1d/0/policies/policy_50"
+    discrim_acc = np.load("../logs/traj_length/l1d/0/stats/discrim_acc.npy")
+    ir = np.load("../logs/traj_length/l1d/0/stats/intrinsic_rewards.npy")
+
+    fig = plt.figure(constrained_layout=True)
+    gs = fig.add_gridspec(2, 6, height_ratios=[2, 1])
+    ax1 = fig.add_subplot(gs[0, :2])
+    ax2 = fig.add_subplot(gs[0, 2:4])
+    ax3 = fig.add_subplot(gs[0, 4:])
+    ax4 = fig.add_subplot(gs[1, :3])
+    ax5 = fig.add_subplot(gs[1, 3:])
+
+    vis_saved_policy(ax1, policy_dir1, cont=True, title="10 epochs", skill_length=100, box_size=1)
+    vis_saved_policy(ax2, policy_dir2, cont=True, title="30 epochs", skill_length=100, box_size=1)
+    vis_saved_policy(ax3, policy_dir3, cont=True, title="50 epochs", skill_length=100, box_size=1)
+
+    ax4.plot(range(len(discrim_acc)), discrim_acc, color='lightblue', linewidth=3)
+    ax4.set(title='Discriminator Accuracy')
+
+    ax5.plot(range(len(ir)), ir, color='green', linewidth=3)
+    ax5.set(title='Intrinsic Reward')
+
+    fig.savefig("../screenshots/reachgoalstatebehaviour")
+
 
 
 if __name__ == '__main__':
     #compare_cont_discrete_diayn()
-    """
-    policy_dir = "../logs/diayn/thesis/hiercomp/flat/0/policies/policy_100"
 
-    fig, ax = plt.subplots(1, 1, figsize=(5, 5))
-    vis_saved_policy(ax, policy_dir, cont=True, title="Hello", skill_length=100, box_size=5)
-    plt.show()
-    """
+    vis_reach_goal_state_behaviour()
 
-    comp_traj_length()
+    #comp_traj_length()
 
     #vis_entropy_policies()
 
