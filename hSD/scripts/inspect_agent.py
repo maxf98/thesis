@@ -7,6 +7,7 @@ import numpy as np
 import tensorflow as tf
 import matplotlib.pyplot as plt
 from scripts import point_env_vis
+from env import skill_environment
 
 from tf_agents.policies import py_tf_eager_policy
 from tf_agents.environments import suite_gym
@@ -33,6 +34,14 @@ def load_trained_agent(config_path):
     point_env_vis.config_subplot(ax, box_size=2.5)
     plt.show()
     """
+
+
+def launch_from_agent(old_config_path, new_config_path):
+    gin.parse_config_file(old_config_path)
+    envs, _ = launcher.hierarchical_skill_discovery(config_path=old_config_path)
+
+    gin.parse_config_file(new_config_path)
+    launcher.hierarchical_skill_discovery(config_path=new_config_path, env=envs[-1])
 
 
 def inspect_stats(dir):
@@ -78,10 +87,16 @@ def run_saved_policy():
 
 if __name__=='__main__':
     gpus = tf.config.list_physical_devices('GPU')
-    tf.config.experimental.set_memory_growth(gpus[0], True)
+    #tf.config.experimental.set_memory_growth(gpus[0], True)
 
-    config_path = "/home/max/RL/thesis/hSD/logs/fetchreach/config.gin"
-    load_trained_agent(config_path)
+    trained_config_path = "/configs/temp/config1.gin"
+    learn_config_path = "/configs/temp/config2.gin"
+
+    #launch_from_agent(trained_config_path, learn_config_path)
+
+    config_path = "/home/max/RL/thesis/hSD/logs/traj_length/hier_l1e/config2.gin"
+
+    #load_trained_agent(config_path)
     #inspect_stats("../logs/diayn/thesis/hopper/0/stats")
 
     #run_saved_policy()

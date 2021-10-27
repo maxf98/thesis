@@ -15,7 +15,7 @@ tf.compat.v1.enable_v2_behavior()
 
 class PointEnv(py_environment.PyEnvironment):
 
-  def __init__(self, step_size=0.1, box_size=None, dim=3):
+  def __init__(self, step_size=0.1, box_size=None, dim=2):
     """we keep the box_size parameter for now, to not break configs that use it..."""
     super(PointEnv, self).__init__()
     assert(step_size > 0)
@@ -23,7 +23,8 @@ class PointEnv(py_environment.PyEnvironment):
     self.step_size = step_size
     self.start_state = tuple(0. for _ in range(dim))
     self._action_spec = array_spec.BoundedArraySpec(shape=(dim,), dtype=np.float32, minimum=-step_size, maximum=step_size, name='action')
-    self._observation_spec = array_spec.ArraySpec(shape=(dim,), dtype=np.float32, name='observation')
+    # arbitrarily bounded for now...
+    self._observation_spec = array_spec.BoundedArraySpec(shape=(dim,), dtype=np.float32, minimum=-10000, maximum=10000, name='observation')
     self._state = self.start_state
     self._step_count = 0
     self._episode_ended = False
@@ -47,9 +48,9 @@ class PointEnv(py_environment.PyEnvironment):
   def _step(self, action):
     if self._episode_ended:
       return self.reset()
-
     """
     x_t, y_t = action.flatten()
+
     x = self._clip_to_bounds(self._state[0] + x_t, -self.box_size, self.box_size)
     y = self._clip_to_bounds(self._state[1] + y_t, -self.box_size, self.box_size)
     self._state = (x, y)

@@ -1,5 +1,6 @@
 import os
 
+import gin
 import tensorflow as tf
 import tensorflow_probability as tfp
 tfd = tfp.distributions
@@ -8,11 +9,14 @@ import matplotlib.pyplot as plt
 
 from env import point_environment
 from scripts import point_env_vis
+import launcher
 
 from tf_agents.environments.tf_py_environment import TFPyEnvironment
 from tf_agents.policies.random_py_policy import RandomPyPolicy
 
 from core.modules import utils
+
+from env import skill_environment
 
 
 def compare_cont_discrete_diayn():
@@ -58,7 +62,6 @@ def vis_saved_policy(ax, policy_dir, cont=True, title=None, env=None, skill_leng
 
     if title is not None:
         ax.set(title=title)
-
 
 
 def vis_entropy_policies():
@@ -303,11 +306,11 @@ def comp_traj_length():
 
 
 def vis_reach_goal_state_behaviour():
-    policy_dir1 = "../logs/traj_length/l1d/0/policies/policy_10"
-    policy_dir2 = "../logs/traj_length/l1d/0/policies/policy_30"
-    policy_dir3 = "../logs/traj_length/l1d/0/policies/policy_50"
-    discrim_acc = np.load("../logs/traj_length/l1d/0/stats/discrim_acc.npy")
-    ir = np.load("../logs/traj_length/l1d/0/stats/intrinsic_rewards.npy")
+    policy_dir1 = "../logs/traj_length/l1e/0/policies/policy_10"
+    policy_dir2 = "../logs/traj_length/l1e/0/policies/policy_30"
+    policy_dir3 = "../logs/traj_length/l1e/0/policies/policy_50"
+    discrim_acc = np.load("../logs/traj_length/l1e/0/stats/discrim_acc.npy")
+    ir = np.load("../logs/traj_length/l1e/0/stats/intrinsic_rewards.npy")
 
     fig = plt.figure(constrained_layout=True)
     gs = fig.add_gridspec(2, 6, height_ratios=[2, 1])
@@ -317,9 +320,9 @@ def vis_reach_goal_state_behaviour():
     ax4 = fig.add_subplot(gs[1, :3])
     ax5 = fig.add_subplot(gs[1, 3:])
 
-    vis_saved_policy(ax1, policy_dir1, cont=True, title="10 epochs", skill_length=100, box_size=1)
-    vis_saved_policy(ax2, policy_dir2, cont=True, title="30 epochs", skill_length=100, box_size=1)
-    vis_saved_policy(ax3, policy_dir3, cont=True, title="50 epochs", skill_length=100, box_size=1)
+    vis_saved_policy(ax1, policy_dir1, cont=True, title="10 epochs", skill_length=10, box_size=1)
+    vis_saved_policy(ax2, policy_dir2, cont=True, title="30 epochs", skill_length=10, box_size=1)
+    vis_saved_policy(ax3, policy_dir3, cont=True, title="50 epochs", skill_length=10, box_size=1)
 
     ax4.plot(range(len(discrim_acc)), discrim_acc, color='lightblue', linewidth=3)
     ax4.set(title='Discriminator Accuracy')
@@ -327,25 +330,31 @@ def vis_reach_goal_state_behaviour():
     ax5.plot(range(len(ir)), ir, color='green', linewidth=3)
     ax5.set(title='Intrinsic Reward')
 
-    fig.savefig("../screenshots/reachgoalstatebehaviour")
+    #fig.savefig("../screenshots/reachgoalstatebehaviour")
+    plt.show()
 
+
+def vis_hierarchy_policy():
+    base_config_path = "/home/max/RL/thesis/hSD/logs/traj_length/l1e/config3.gin"
+    config_path = "/home/max/RL/thesis/hSD/logs/traj_length/hier_l1e/config2.gin"
+    gin.parse_config_file(base_config_path)
+    base_envs, base_agents = launcher.hierarchical_skill_discovery(config_path=base_config_path)
+    gin.parse_config_file(config_path)
+    envs, agents = launcher.hierarchical_skill_discovery(config_path=config_path)
+
+    base_env, l1_agent = base_envs[0], base_agents[0]
+    l2_agent = agents[0]
+    l1_env = skill_environment.SkillEnv(base_env, l1_agent.policy_learner.policy, l1_agent.rollout_driver.skill_length, l1_agent.skill_dim)
+
+    skills = utils.discretize_continuous_space(-1, 1, 3, 2)
+
+    fig, (ax1, ax2) = plt.subplots(1, 2)
+
+    #point_env_vis.skill_vis(ax1, TFPyEnvironment(base_env), l1_agent.policy_learner.policy, skills, 3, skill_length=l1_agent.rollout_driver.skill_length, box_size=1)
+    point_env_vis.skill_vis(ax2, TFPyEnvironment(l1_env), l2_agent.policy_learner.policy, skills, 3, skill_length=l2_agent.rollout_driver.skill_length, box_size=1)
+
+    plt.show()
 
 
 if __name__ == '__main__':
-    #compare_cont_discrete_diayn()
-
-    vis_reach_goal_state_behaviour()
-
-    #comp_traj_length()
-
-    #vis_entropy_policies()
-
-    #vis_local_optima()
-
-    #vis_run()
-
-    #vis_out_of_distribution_skills()
-
-    #sequence_state()
-    #vis_out_of_distribution_skills()
-    #vis_out_of_distribution_skills()
+    vis_hierarchy_policy()

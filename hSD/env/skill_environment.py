@@ -38,10 +38,10 @@ class SkillEnv(py_environment.PyEnvironment):
     def _reset(self):
         return self._env.reset()
 
-    def _step(self, action):
+    def _step(self, action, return_intermediate_steps=False):
         time_step = self._env.current_time_step()
         s_0 = time_step.observation
-        time_steps = []
+        time_steps = [s_0]
 
         for i in range(self._skill_length):
             aug_ts = self._preprocess_time_step(time_step, action, s_norm=s_0)
@@ -49,7 +49,10 @@ class SkillEnv(py_environment.PyEnvironment):
             time_step = self._env.step(action_step.action)
             time_steps.append(time_step)
 
-        return time_step
+        if return_intermediate_steps:
+            return tf.reshape(time_steps, [-1])
+        else:
+            return time_step
 
     def _preprocess_time_step(self, time_step, skill, s_norm):
         obs = time_step.observation - s_norm if self._state_norm else time_step.observation
