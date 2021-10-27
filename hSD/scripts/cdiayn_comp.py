@@ -48,12 +48,12 @@ def compare_cont_discrete_diayn():
     plt.show()
 
 
-def vis_saved_policy(ax, policy_dir, cont=True, title=None, env=None, skill_length=25, step_size=0.1, box_size=None):
+def vis_saved_policy(ax, policy_dir, cont=True, title=None, env=None, skill_length=25, step_size=0.1, box_size=None, skill_dim=2, skill_samples=3):
     policy = tf.compat.v2.saved_model.load(policy_dir)
     if env is None:
         env = TFPyEnvironment(point_environment.PointEnv(step_size=step_size, box_size=box_size))
     if cont:
-        skills = utils.discretize_continuous_space(-1, 1, 3, 2)
+        skills = utils.discretize_continuous_space(-1, 1, skill_samples, skill_dim)
     else:
         NUM_SKILLS = 8
         skills = tf.one_hot(list(range(NUM_SKILLS)), NUM_SKILLS)
@@ -356,5 +356,50 @@ def vis_hierarchy_policy():
     plt.show()
 
 
+def skill_dim_impact():
+    two_one_dir = "../iglogs/2dnav-1ds/"
+    two_two_dir = "../iglogs/2dnav-2ds/"
+    two_three_dir = "../iglogs/pointoverspec/"
+    three_two_dir = "../iglogs/3dnav-2ds/0/policies/policy_10"
+
+    two_one_pol_dir = os.path.join(two_one_dir, "0/policies/policy_10")
+    two_two_pol_dir = os.path.join(two_two_dir, "0/policies/policy_20")
+    two_three_pol_dir = os.path.join(two_three_dir, "0/policies/policy_30")
+
+
+    da1 = np.load(os.path.join(two_one_dir, "0/stats/discrim_acc.npy"))
+    ir1 = np.load(os.path.join(two_one_dir, "0/stats/intrinsic_rewards.npy"))
+    da2 = np.load(os.path.join(two_two_dir, "0/stats/discrim_acc.npy"))
+    ir2 = np.load(os.path.join(two_two_dir, "0/stats/intrinsic_rewards.npy"))
+    da3 = np.load(os.path.join(two_three_dir, "0/stats/discrim_acc.npy"))
+    ir3 = np.load(os.path.join(two_three_dir, "0/stats/intrinsic_rewards.npy"))
+
+    fig = plt.figure(constrained_layout=True)
+    gs = fig.add_gridspec(2, 6, height_ratios=[2, 1])
+    ax1 = fig.add_subplot(gs[0, :2])
+    ax2 = fig.add_subplot(gs[0, 2:4])
+    ax3 = fig.add_subplot(gs[0, 4:])
+    ax4 = fig.add_subplot(gs[1, :3])
+    ax5 = fig.add_subplot(gs[1, 3:])
+
+    vis_saved_policy(ax1, two_one_pol_dir, cont=True, title=r"$|\mathcal{Z}|=1$", skill_length=20, box_size=2, skill_dim=1, skill_samples=4)
+    vis_saved_policy(ax2, two_two_pol_dir, cont=True, title=r"$|\mathcal{Z}|=2$", skill_length=20, box_size=2, skill_dim=2, skill_samples=3)
+    vis_saved_policy(ax3, two_three_pol_dir, cont=True, title=r"$|\mathcal{Z}|=3$", skill_length=20, box_size=2, skill_dim=3, skill_samples=2)
+
+    #ax4.plot(range(30), da1[:30], color="blue", linewidth=2)
+    ax4.plot(range(30), da2[:30], color="green", linewidth=2)
+    ax4.plot(range(30), da3[:30], color="red", linewidth=2)
+    ax4.set_ylabel(r"$E[q_\phi(z|s)]$")
+    ax4.set_xlabel("epoch")
+
+    ax5.plot(range(30), ir1[:30], color="blue", label=r"$|\mathcal{Z}|=1$", linewidth=2)
+    ax5.plot(range(30), ir2[:30], color="green", label=r"$|\mathcal{Z}|=2$", linewidth=2)
+    ax5.plot(range(30), ir3[:30], color="red", label=r"$|\mathcal{Z}|=3$", linewidth=2)
+    ax5.set_ylabel(r"$E[r_z(s)]$")
+    ax5.set_xlabel("epoch")
+    ax5.legend(loc="right")
+
+    plt.show()
+
 if __name__ == '__main__':
-    vis_hierarchy_policy()
+    skill_dim_impact()

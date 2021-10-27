@@ -139,7 +139,7 @@ class Logger:
             skill_model.model.load_weights(os.path.join(self.skill_weights_dir, f"weights"))
 
     def load_stats(self):
-        # again a pretty weak check...
+        # again a pretty weak check... just replace with a try catch you fool...
         if len(os.listdir(self.stats_dir)) > 0:
             self.sac_stats['reward'] = np.load(os.path.join(self.stats_dir, "intrinsic_rewards.npy")).tolist()
             self.sac_stats['loss'] = np.load(os.path.join(self.stats_dir, "policy_loss.npy")).tolist()
