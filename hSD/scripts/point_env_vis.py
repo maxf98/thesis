@@ -4,6 +4,7 @@ import tensorflow as tf
 from env.maze import maze_env
 from core.modules import utils
 from tf_agents.trajectories import time_step as ts
+from tf_agents.environments.tf_environment import TFEnvironment
 
 
 
@@ -103,20 +104,30 @@ def collect_skill_trajectories(env, policy, skills, rollouts_per_skill, skill_le
 def rollout_skill_t_steps(env, policy, skill, time_step, t, state_norm=False):
     traj = []
     s_0 =  time_step.observation if state_norm else None
+
+    is_tf_env = isinstance(env, TFEnvironment)
     for ti in range(t):
-        traj.append(time_step.observation.numpy().flatten().tolist())
-        aug_time_step = preprocess_time_step(time_step, skill, s_0)
+        if is_tf_env:
+            traj.append(time_step.observation.numpy().flatten().tolist())
+        else:
+            traj.append(time_step.observation.flatten().tolist())
+        aug_time_step = preprocess_time_step(time_step, skill, s_0, is_tf_env=is_tf_env)
         action_step = policy.action(aug_time_step)
         time_step = env.step(action_step.action)
     return traj, time_step
 
 
-def preprocess_time_step(time_step, skill, s_norm):
+def preprocess_time_step(time_step, skill, s_norm, is_tf_env=True):
     obs = time_step.observation - s_norm if s_norm is not None else time_step.observation
+    if is_tf_env:
+        obs = tf.concat([obs, tf.reshape(skill, (1, -1))], axis=-1)
+    else:
+        obs = tf.concat([obs, tf.reshape(skill, (-1))], axis=-1)
+
     return ts.TimeStep(time_step.step_type,
                        time_step.reward,
                        time_step.discount,
-                       tf.concat([obs, tf.reshape(skill, (1, -1))], axis=-1))
+                       obs)
 
 
 def categorical_discrim_heatmap(ax, discriminator):

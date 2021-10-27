@@ -15,14 +15,15 @@ tf.compat.v1.enable_v2_behavior()
 
 class PointEnv(py_environment.PyEnvironment):
 
-  def __init__(self, step_size=0.1, box_size=1):
+  def __init__(self, step_size=0.1, box_size=None, dim=3):
+    """we keep the box_size parameter for now, to not break configs that use it..."""
     super(PointEnv, self).__init__()
-    assert(step_size > 0 and box_size > 0)
+    assert(step_size > 0)
 
-    self.box_size, self.step_size = box_size, step_size
-    self.start_state = 0., 0.
-    self._action_spec = array_spec.BoundedArraySpec(shape=(2,), dtype=np.float32, minimum=-step_size, maximum=step_size, name='action')
-    self._observation_spec = array_spec.BoundedArraySpec(shape=(2,), dtype=np.float32, minimum=-box_size, maximum=box_size, name='observation')
+    self.step_size = step_size
+    self.start_state = tuple(0. for _ in range(dim))
+    self._action_spec = array_spec.BoundedArraySpec(shape=(dim,), dtype=np.float32, minimum=-step_size, maximum=step_size, name='action')
+    self._observation_spec = array_spec.ArraySpec(shape=(dim,), dtype=np.float32, name='observation')
     self._state = self.start_state
     self._step_count = 0
     self._episode_ended = False
@@ -39,17 +40,22 @@ class PointEnv(py_environment.PyEnvironment):
     self._episode_ended = False
     return ts.restart(np.array(self._state, dtype=np.float32))
 
-  def _clip_to_bounds(self, val, low, high):
+  @staticmethod
+  def _clip_to_bounds(val, low, high):
     return min(high, max(val, low))
 
   def _step(self, action):
     if self._episode_ended:
       return self.reset()
 
+    """
     x_t, y_t = action.flatten()
     x = self._clip_to_bounds(self._state[0] + x_t, -self.box_size, self.box_size)
     y = self._clip_to_bounds(self._state[1] + y_t, -self.box_size, self.box_size)
     self._state = (x, y)
+    """
+
+    self._state = tuple(self._state[i] + action[i] for i in range(len(self._state)))
 
     self._step_count += 1
 
