@@ -82,11 +82,11 @@ def plot_all_skills(ax, cmap, trajectories, alpha=0.5, linewidth=2):
     return ax
 
 
-def plot_trajectory(ax, traj, color, alpha=0.5, linewidth=2):
+def plot_trajectory(ax, traj, color, alpha=0.5, linewidth=2, label=None):
     xs = [step[0] for step in traj]
     ys = [step[1] for step in traj]
 
-    ax.plot(xs, ys, color=color, alpha=alpha, linewidth=linewidth, zorder=10)
+    ax.plot(xs, ys, color=color, alpha=alpha, linewidth=linewidth, zorder=10, label=label)
 
 
 def collect_skill_trajectories(env, policy, skills, rollouts_per_skill, skill_length):

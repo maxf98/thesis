@@ -458,14 +458,79 @@ def skill_dim_impact():
     plt.show()
 
 
+from mpl_toolkits import axes_grid1
+
+def add_colorbar(im, aspect=20, pad_fraction=0.5, **kwargs):
+    """Add a vertical color bar to an image plot."""
+    divider = axes_grid1.make_axes_locatable(im.axes)
+    width = axes_grid1.axes_size.AxesY(im.axes, aspect=1./aspect)
+    pad = axes_grid1.axes_size.Fraction(pad_fraction, width)
+    current_ax = plt.gca()
+    cax = divider.append_axes("right", size=width, pad=pad)
+    plt.sca(current_ax)
+    return im.axes.figure.colorbar(im, cax=cax, **kwargs)
+
+
 def vis_skill_smoothness():
     # skill interpolation and discriminator smoothness...
-    agent_dir = "/home/max/RL/thesis/hSD/logs/traj_length/l2-rb/"
-    config_path = os.path.join(agent_dir, "config2.gin")
+    agent_dir = "../logs/traj_length/hier3/"
+    config_path = os.path.join(agent_dir, "config.gin")
     gin.parse_config_file(config_path)
     envs, agents = launcher.hierarchical_skill_discovery(config_path=config_path)
 
+    base_env = TFPyEnvironment(envs[0])
+    policy = agents[0].policy_learner.policy
+    #policy = tf.compat.v2.saved_model.load("/Users/maxfest/RL/thesis/hSD/logs/traj_length/l3-rb/0/policies/policy_15")
+
+    #skills = [[-1., 1.], [-0.6, 1.], [-0.2, 1.], [0.2, 1.], [0.6, 1.], [1., 1.], [1., 0.6], [1., 0.2], [1.0, -0.2], [1.0, -0.6], [1., -1.]]
+    skills = [[-0.3, 1.], [0.3, 1.], [1., 1.], [1., 0.3], [1.0, -0.3], [1., -1.], [-0.2, -0.2], [-0.4, -0.4], [-0.6, -0.6]]
+
+    fig, (ax1, ax2) = plt.subplots(1, 2)
+
+    ax2.remove()
+
+    cmap = point_env_vis.get_cmap(len(skills))
+
+    for i in range(len(skills)):
+        time_step = base_env.reset()
+        traj, _ = point_env_vis.rollout_skill_t_steps(base_env, policy, skills[i], time_step=time_step, t=15, state_norm=True)
+        point_env_vis.plot_trajectory(ax1, traj, cmap(i), alpha=1, label=skills[i])
+
+    ax1.legend(loc="center left", bbox_to_anchor=(1.04, 0.5))
+
+    ax1.plot(0.0, 0.0, marker='o', markersize=4, color='black', zorder=11)
+
+    point_env_vis.config_subplot(ax1, box_size=1.0)
+
+    vis_discriminator(agents[0].skill_model)
+
+    plt.show()
+
+
+def vis_discriminator(discriminator):
+    fig, (ax1, ax2) = plt.subplots(1, 2)
+
+    P = 100
+    points = tf.constant([[i / P, j / P] for i in range(-P, P, 1) for j in range(-P, P, 1)])
+    pred_distr = discriminator.call(points)  # will automatically sample from out_distr for each point
+    pred = pred_distr.sample()
+    pred_x, pred_y = tf.split(pred, [1, 1], axis=-1)
+    s1 = tf.reshape(pred_x, (2 * P, 2 * P))
+    s2 = tf.reshape(pred_y, (2 * P, 2 * P))
+
+    ax1.imshow(s1, extent=[-1., 1., -1., 1.])
+    plot = ax2.imshow(s2, extent=[-1., 1., -1., 1.])
+
+    ax1.set_title(r"$z_0$")
+    ax1.set_xticks([-1, 0., 1])
+    ax1.set_yticks([-1, 0., 1])
+
+    ax2.set_title(r"$z_1$")
+    ax2.set_xticks([-1, 0., 1])
+    ax2.set_yticks([-1, 0., 1])
+
+    add_colorbar(plot)
 
 
 if __name__ == '__main__':
-    vis_hierarchy_policy()
+    vis_skill_smoothness()

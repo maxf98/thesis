@@ -1,6 +1,6 @@
 hierarchical_skill_discovery.num_layers = 1
 hierarchical_skill_discovery.skill_lengths = (25,)
-hierarchical_skill_discovery.log_dir = "/home/max/RL/thesis/hSD/logs/traj_length/l2-rb"
+hierarchical_skill_discovery.log_dir = "/Users/maxfest/RL/thesis/hSD/logs/traj_length/l2-rb"
 
 get_base_env.env_name = "point_env"
 get_base_env.point_env_step_size = 0.04
