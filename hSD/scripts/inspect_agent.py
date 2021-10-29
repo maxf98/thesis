@@ -36,7 +36,7 @@ def load_trained_agent(config_path):
     """
 
 
-def launch_from_agent(old_config_path, new_config_path):
+def _launch_from_agent(old_config_path, new_config_path):
     gin.parse_config_file(old_config_path)
     envs, _ = launcher.hierarchical_skill_discovery(config_path=old_config_path)
 

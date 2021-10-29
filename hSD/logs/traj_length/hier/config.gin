@@ -28,7 +28,7 @@ SACLearner.entropy_anneal_period = None
 Logger.create_fig_interval = 10
 Logger.num_samples_per_skill = 3
 
-train.num_epochs=50
+train.num_epochs=30
 train.initial_collect_steps=1000
 train.collect_steps_per_epoch=1000
 train.batch_size=64

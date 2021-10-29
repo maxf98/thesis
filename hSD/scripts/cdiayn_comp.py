@@ -334,7 +334,7 @@ def vis_reach_goal_state_behaviour():
     plt.show()
 
 
-def vis_hierarchy_policy():
+def vis_hierarchy_policy_init_from_other_agent():
     base_config_path = "/home/max/RL/thesis/hSD/logs/traj_length/l1e/config3.gin"
     config_path = "/home/max/RL/thesis/hSD/logs/traj_length/hier_l1e/config2.gin"
     gin.parse_config_file(base_config_path)
@@ -356,6 +356,63 @@ def vis_hierarchy_policy():
     plt.show()
 
 
+def vis_hierarchy_policy():
+    hier_dir = "/home/max/RL/thesis/hSD/logs/traj_length/hier2/"
+    config_path = "/home/max/RL/thesis/hSD/logs/traj_length/hier2/config.gin"
+    gin.parse_config_file(config_path)
+    envs, agents = launcher.hierarchical_skill_discovery(config_path=config_path)
+
+    env, l1_env = TFPyEnvironment(envs[0]), TFPyEnvironment(envs[1])
+    l1_policy, l2_policy = agents[0].policy_learner.policy, agents[1].policy_learner.policy
+    l2_policy = tf.compat.v2.saved_model.load("/home/max/RL/thesis/hSD/logs/traj_length/hier2/1/policies/policy_9")
+
+    skills = utils.discretize_continuous_space(-1, 1, 3, 2)
+
+    fig = plt.figure(constrained_layout=True)
+    subfigs = fig.subfigures(2, 1, height_ratios=[1.5, 1])
+    ax1, ax2, ax3 = subfigs[0].subplots(1, 3)
+    ax4, ax5 = subfigs[1].subplots(1, 2)
+
+    point_env_vis.skill_vis(ax1, env, l1_policy, skills, 3, skill_length=10, box_size=1)
+    ax1.set_title(r"$T=10$")
+    point_env_vis.skill_vis(ax2, l1_env, l2_policy, skills, 3, skill_length=10, box_size=4)
+    ax2.set_title(r"$T=(10,10)$")
+    flat_dir = "../logs/traj_length/hier-flatcomp/"
+    policy_dir = "../logs/traj_length/hier-flatcomp/0/policies/policy_15"
+
+    vis_saved_policy(ax3, policy_dir, skill_length=100, step_size=0.1, box_size=4, skill_dim=2, skill_samples=3)
+    ax3.set_title(r"$T=100$")
+
+    dah1 = np.load(os.path.join(hier_dir, "0/stats/discrim_acc.npy"))
+    dah = np.load(os.path.join(hier_dir, "1/stats/discrim_acc.npy"))
+    daf = np.load(os.path.join(flat_dir, "0/stats/discrim_acc.npy"))
+    irh1 = np.load(os.path.join(hier_dir, "0/stats/intrinsic_rewards.npy"))
+    irh = np.load(os.path.join(hier_dir, "1/stats/intrinsic_rewards.npy"))
+    irf = np.load(os.path.join(flat_dir, "0/stats/intrinsic_rewards.npy"))
+
+    #ax4.plot(range(15), dah1[:15], color="red", linewidth=2, alpha=0.6)
+    ax4.plot(range(15), dah[:15], color="blue", linewidth=2, alpha=0.6)
+    ax4.plot(range(15), daf[:15], color="green", linewidth=2, alpha=0.6)
+
+    ax4.set_title("Discriminator Accuracy")
+    ax4.set_ylabel(r"$E[q_\phi(z|s)]$")
+    ax4.set_xlabel("epoch")
+
+    #ax5.plot(range(15), irh1[:15], color="red", label=r"$T=10$", linewidth=2, alpha=0.6)
+    ax5.plot(range(15), irh[:15], color="blue", label=r"$T=(10,10)$", linewidth=2, alpha=0.6)
+    ax5.plot(range(15), irf[:15], color="green", label=r"$T=100$", linewidth=2, alpha=0.6)
+    ax5.set_title("Intrinsic Reward")
+    ax5.set_ylabel(r"$E[r_z(s)]$")
+    ax5.set_xlabel("epoch")
+    ax5.legend(loc="center left", bbox_to_anchor=(1.04, 0.5))
+
+    fig.tight_layout()
+
+    fig.savefig("../screenshots/2dNavHiercomp")
+
+    plt.show()
+
+
 def skill_dim_impact():
     two_one_dir = "../iglogs/2dnav-1ds/"
     two_two_dir = "../iglogs/2dnav-2ds/"
@@ -365,7 +422,6 @@ def skill_dim_impact():
     two_one_pol_dir = os.path.join(two_one_dir, "0/policies/policy_10")
     two_two_pol_dir = os.path.join(two_two_dir, "0/policies/policy_20")
     two_three_pol_dir = os.path.join(two_three_dir, "0/policies/policy_30")
-
 
     da1 = np.load(os.path.join(two_one_dir, "0/stats/discrim_acc.npy"))
     ir1 = np.load(os.path.join(two_one_dir, "0/stats/intrinsic_rewards.npy"))
@@ -401,5 +457,15 @@ def skill_dim_impact():
 
     plt.show()
 
+
+def vis_skill_smoothness():
+    # skill interpolation and discriminator smoothness...
+    agent_dir = "/home/max/RL/thesis/hSD/logs/traj_length/l2-rb/"
+    config_path = os.path.join(agent_dir, "config2.gin")
+    gin.parse_config_file(config_path)
+    envs, agents = launcher.hierarchical_skill_discovery(config_path=config_path)
+
+
+
 if __name__ == '__main__':
-    skill_dim_impact()
+    vis_hierarchy_policy()

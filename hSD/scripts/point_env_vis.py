@@ -144,6 +144,7 @@ def categorical_discrim_heatmap(ax, discriminator):
 
     return ax
 
+
 def cont_diayn_skill_heatmap(ax, discriminator):
     # technically need one axis for each dimension of the skill model... for now we only visualise the first dimension
     P = 50
