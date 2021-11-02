@@ -15,8 +15,11 @@ from tf_agents.environments.tf_py_environment import TFPyEnvironment
 from tf_agents.policies.random_py_policy import RandomPyPolicy
 
 from core.modules import utils
+from core.modules import rollout_drivers
 
 from env import skill_environment
+
+from mpl_toolkits import axes_grid1
 
 
 def compare_cont_discrete_diayn():
@@ -357,14 +360,14 @@ def vis_hierarchy_policy_init_from_other_agent():
 
 
 def vis_hierarchy_policy():
-    hier_dir = "/home/max/RL/thesis/hSD/logs/traj_length/hier2/"
-    config_path = "/home/max/RL/thesis/hSD/logs/traj_length/hier2/config.gin"
+    hier_dir = "/home/max/RL/thesis/hSD/logs/traj_length/hier3/"
+    config_path = "/home/max/RL/thesis/hSD/logs/traj_length/hier3/config.gin"
     gin.parse_config_file(config_path)
     envs, agents = launcher.hierarchical_skill_discovery(config_path=config_path)
 
     env, l1_env = TFPyEnvironment(envs[0]), TFPyEnvironment(envs[1])
     l1_policy, l2_policy = agents[0].policy_learner.policy, agents[1].policy_learner.policy
-    l2_policy = tf.compat.v2.saved_model.load("/home/max/RL/thesis/hSD/logs/traj_length/hier2/1/policies/policy_9")
+    l2_policy = tf.compat.v2.saved_model.load("/home/max/RL/thesis/hSD/logs/traj_length/hier3/1/policies/policy_9")
 
     skills = utils.discretize_continuous_space(-1, 1, 3, 2)
 
@@ -377,8 +380,8 @@ def vis_hierarchy_policy():
     ax1.set_title(r"$T=10$")
     point_env_vis.skill_vis(ax2, l1_env, l2_policy, skills, 3, skill_length=10, box_size=4)
     ax2.set_title(r"$T=(10,10)$")
-    flat_dir = "../logs/traj_length/hier-flatcomp/"
-    policy_dir = "../logs/traj_length/hier-flatcomp/0/policies/policy_15"
+    flat_dir = "../logs/traj_length/hier3flat/"
+    policy_dir = "../logs/traj_length/hier3flat/0/policies/policy_15"
 
     vis_saved_policy(ax3, policy_dir, skill_length=100, step_size=0.1, box_size=4, skill_dim=2, skill_samples=3)
     ax3.set_title(r"$T=100$")
@@ -409,6 +412,29 @@ def vis_hierarchy_policy():
     fig.tight_layout()
 
     fig.savefig("../screenshots/2dNavHiercomp")
+
+    plt.show()
+
+
+def load_agent(path):
+    config_path = find_config_file(path)
+    gin.parse_config_file(config_path)
+    envs, agents = launcher.hierarchical_skill_discovery(config_path=config_path)
+    return envs, agents
+
+
+def maze_exploration():
+    maze_dir = "../logs/maze"
+    envs, agents = load_agent(maze_dir)
+
+    l1_env = envs[1]
+    rand_pol = RandomPyPolicy(l1_env.time_step_spec(), l1_env.action_spec())
+    policy = agents[0].policy_learner.policy
+
+    skills = utils.discretize_continuous_space(-1, 1, 2, 2)
+
+    fig, ax = plt.subplots()
+    point_env_vis.skill_vis(ax, l1_env, rand_pol, skills, 1, 15)
 
     plt.show()
 
@@ -457,8 +483,6 @@ def skill_dim_impact():
 
     plt.show()
 
-
-from mpl_toolkits import axes_grid1
 
 def add_colorbar(im, aspect=20, pad_fraction=0.5, **kwargs):
     """Add a vertical color bar to an image plot."""
@@ -532,5 +556,13 @@ def vis_discriminator(discriminator):
     add_colorbar(plot)
 
 
+def find_config_file(dir):
+    config_file = None
+    for file in os.listdir(dir):
+        if file.endswith(".gin"):
+            config_file = os.path.join(dir, file)
+    return config_file
+
+
 if __name__ == '__main__':
-    vis_skill_smoothness()
+    maze_exploration()

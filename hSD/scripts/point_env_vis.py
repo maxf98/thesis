@@ -6,6 +6,8 @@ from core.modules import utils
 from tf_agents.trajectories import time_step as ts
 from tf_agents.environments.tf_environment import TFEnvironment
 
+from core.modules import rollout_drivers
+
 
 
 ENV_LIMS = dict(
@@ -27,7 +29,7 @@ def get_cmap(num_skills):
     return cmap
 
 
-def config_subplot(ax, maze_type=None, box_size=None, extra_lim=0., title=None):
+def config_subplot(ax, maze_type="square_a", box_size=None, extra_lim=0., title=None):
     if title is not None:
         ax.set_title(title, fontsize=14)
 
@@ -51,7 +53,6 @@ def config_subplot(ax, maze_type=None, box_size=None, extra_lim=0., title=None):
     #ax.get_yaxis().set_visible(False)
     #for p in ["left", "right", "top", "bottom"]:
     #    ax.spines[p].set_visible(False)
-
 
 
 def discretize_continuous_space(min, max, num_points):
@@ -95,39 +96,15 @@ def collect_skill_trajectories(env, policy, skills, rollouts_per_skill, skill_le
     for i in range(len(skills)):
         for si in range(rollouts_per_skill):
             time_step = env.reset()
-            traj, _ = rollout_skill_t_steps(env, policy, skills[i], time_step, skill_length)
-            trajectories[i].append(traj)
+            cur_traj = []
+            rollout_drivers.rollout_skill_trajectory(time_step, env, policy, rollout_drivers.preprocess_time_step, [cur_traj.append],skills[i], skill_length, return_aug_obs=False, s_norm=True)
+            trajectories[i].append(extract_obs(cur_traj))
 
     return trajectories
 
 
-def rollout_skill_t_steps(env, policy, skill, time_step, t, state_norm=False):
-    traj = []
-    s_0 =  time_step.observation if state_norm else None
-
-    is_tf_env = isinstance(env, TFEnvironment)
-    for ti in range(t):
-        if is_tf_env:
-            traj.append(time_step.observation.numpy().flatten().tolist())
-        else:
-            traj.append(time_step.observation.flatten().tolist())
-        aug_time_step = preprocess_time_step(time_step, skill, s_0, is_tf_env=is_tf_env)
-        action_step = policy.action(aug_time_step)
-        time_step = env.step(action_step.action)
-    return traj, time_step
-
-
-def preprocess_time_step(time_step, skill, s_norm, is_tf_env=True):
-    obs = time_step.observation - s_norm if s_norm is not None else time_step.observation
-    if is_tf_env:
-        obs = tf.concat([obs, tf.reshape(skill, (1, -1))], axis=-1)
-    else:
-        obs = tf.concat([obs, tf.reshape(skill, (-1))], axis=-1)
-
-    return ts.TimeStep(time_step.step_type,
-                       time_step.reward,
-                       time_step.discount,
-                       obs)
+def extract_obs(traj):
+    return [subtraj.observation for subtraj in traj]
 
 
 def categorical_discrim_heatmap(ax, discriminator):

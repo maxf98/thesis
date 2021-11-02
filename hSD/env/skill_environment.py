@@ -4,6 +4,8 @@ from tf_agents.policies import py_policy
 from tf_agents.specs import tensor_spec, BoundedArraySpec
 from tf_agents.trajectories import time_step as ts
 
+from core.modules import utils
+
 import numpy as np
 import tensorflow as tf
 
@@ -55,7 +57,8 @@ class SkillEnv(py_environment.PyEnvironment):
             return time_step
 
     def _preprocess_time_step(self, time_step, skill, s_norm):
-        obs = time_step.observation - s_norm if self._state_norm else time_step.observation
+        obs = utils.hide_goal(time_step.observation)
+        obs = obs - s_norm if self._state_norm else obs
         return ts.TimeStep(time_step.step_type,
                            time_step.reward,
                            time_step.discount,

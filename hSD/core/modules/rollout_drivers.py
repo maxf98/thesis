@@ -54,44 +54,53 @@ class BaseRolloutDriver(RolloutDriver):
     def collect_experience(self, num_steps):
         skills = [self.skill_prior.sample(self.episode_length // self.skill_length) for _ in range(num_steps // self.episode_length)]
         traj_observers = [self.online_buffer.add_batch, self.offline_buffer.add_batch]
-        self._collect_experience_for_skills(self.environment, self.policy, self.skill_length,
-                                            self.preprocess_time_step, traj_observers, skills)
+        collect_experience_for_skills(self.environment, self.policy, self.skill_length, preprocess_time_step, traj_observers, skills)
 
-    @staticmethod
-    def _collect_experience_for_skills(env, policy, skill_length, preprocess_fn, traj_observer, skills, render=False):
-        """skills is a 2d array, each array contains skills to be executed within one episode
-        after the episode, reset environment and run next skill sequence"""
+
+def collect_experience_for_skills(env, policy, skill_length, preprocess_fn, traj_observer, skills, s_norm=False, render=False):
+    """skills is a 2d array, each array contains skills to be executed within one episode
+    after the episode, reset environment and run next skill sequence"""
+    time_step = env.reset()
+
+    for episode_i in range(len(skills)):
+        for skill_i in range(len(skills[0])):
+            skill = skills[episode_i][skill_i]
+            rollout_skill_trajectory(time_step, env, policy, preprocess_fn, traj_observer, skill, skill_length, s_norm, render)
         time_step = env.reset()
 
-        for episode_i in range(len(skills)):
-            for skill_i in range(len(skills[0])):
 
-                skill = skills[episode_i][skill_i]
-                s_0 = utils.hide_goal(time_step.observation)
+def rollout_skill_trajectory(time_step, env, policy, preprocess_fn, traj_observer, skill, skill_length, return_aug_obs=True, s_norm=False, render=False):
+    is_tf_env = isinstance(env, TFEnvironment)
 
-                for i in range(skill_length):
-                    if render:
-                        env.render(mode='human')
+    s_0 = utils.hide_goal(time_step.observation) if s_norm else None
 
-                    aug_ts = preprocess_fn(time_step, skill, s_0)
-                    action_step = policy.action(aug_ts)
-                    next_time_step = env.step(action_step.action)
-                    next_aug_ts = preprocess_fn(next_time_step, skill, s_0)
-                    traj = trajectory.from_transition(aug_ts, action_step, next_aug_ts)
-                    for fn in traj_observer:
-                        fn(traj)
+    for i in range(skill_length):
+        if render:
+            env.render(mode='human')
 
-                    time_step = next_time_step
-            time_step = env.reset()
+        aug_ts = preprocess_fn(time_step, skill, s_0, is_tf_env)
+        action_step = policy.action(aug_ts)
+        next_time_step = env.step(action_step.action)
+        next_aug_ts = preprocess_fn(next_time_step, skill, s_0, is_tf_env)
+        if return_aug_obs:
+            traj = trajectory.from_transition(aug_ts, action_step, next_aug_ts)
+        else:
+            traj = trajectory.from_transition(time_step, action_step, next_time_step)
 
-    def preprocess_time_step(self, time_step, skill, s_norm):
-        obs = utils.hide_goal(time_step.observation)
-        obs = obs - s_norm if self.state_norm else obs
-        obs = tf.cast(obs, tf.float32)
-        return ts.TimeStep(time_step.step_type,
-                           time_step.reward,
-                           time_step.discount,
-                           tf.concat([obs, tf.reshape(skill, (1, -1))], axis=-1))
+        for fn in traj_observer:
+            fn(traj)
+
+        time_step = next_time_step
 
 
-
+def preprocess_time_step(time_step, skill, s_norm, is_tf_env=True):
+    # is_tf_env matters only because tf_env adds a batch_dim to time steps
+    obs = utils.hide_goal(time_step.observation)
+    obs = obs - s_norm if s_norm is not None else obs
+    obs = tf.cast(obs, tf.float32)
+    skill_shape = (1, -1) if is_tf_env else (-1)
+    obs = tf.concat([obs, tf.reshape(skill, skill_shape)], axis=-1)
+    return ts.TimeStep(time_step.step_type,
+                       time_step.reward,
+                       time_step.discount,
+                       obs)
