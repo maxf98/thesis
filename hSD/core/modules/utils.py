@@ -39,5 +39,9 @@ def discretize_continuous_space(min, max, points_per_axis, dim):
     return skills
 
 
+def one_hots_for_num_skills(num_skills):
+    return tf.one_hot(list(range(num_skills)), num_skills)
+
+
 def hide_goal(obs):
     return obs['observation'] if isinstance(obs, OrderedDict) else obs

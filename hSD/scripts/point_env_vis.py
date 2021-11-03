@@ -2,9 +2,6 @@ import matplotlib.pyplot as plt
 
 import tensorflow as tf
 from env.maze import maze_env
-from core.modules import utils
-from tf_agents.trajectories import time_step as ts
-from tf_agents.environments.tf_environment import TFEnvironment
 
 from core.modules import rollout_drivers
 
@@ -53,15 +50,6 @@ def config_subplot(ax, maze_type="square_a", box_size=None, extra_lim=0., title=
     #ax.get_yaxis().set_visible(False)
     #for p in ["left", "right", "top", "bottom"]:
     #    ax.spines[p].set_visible(False)
-
-
-def discretize_continuous_space(min, max, num_points):
-    step = (max-min) / num_points
-    return [[min + step * x, min + step * y] for x in range(num_points) for y in range(num_points)]
-
-
-def one_hots_for_num_skills(num_skills):
-    return tf.one_hot(list(range(num_skills)), num_skills)
 
 
 def skill_vis(ax, env, policy, skills, rollouts_per_skill, skill_length, box_size=None):

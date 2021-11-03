@@ -57,7 +57,7 @@ class BaseRolloutDriver(RolloutDriver):
         collect_experience_for_skills(self.environment, self.policy, self.skill_length, preprocess_time_step, traj_observers, skills)
 
 
-def collect_experience_for_skills(env, policy, skill_length, preprocess_fn, traj_observer, skills, s_norm=False, render=False):
+def collect_experience_for_skills(env, policy, skill_length, preprocess_fn, traj_observer, skills, s_norm=True, render=False):
     """skills is a 2d array, each array contains skills to be executed within one episode
     after the episode, reset environment and run next skill sequence"""
     time_step = env.reset()
@@ -65,7 +65,7 @@ def collect_experience_for_skills(env, policy, skill_length, preprocess_fn, traj
     for episode_i in range(len(skills)):
         for skill_i in range(len(skills[0])):
             skill = skills[episode_i][skill_i]
-            rollout_skill_trajectory(time_step, env, policy, preprocess_fn, traj_observer, skill, skill_length, s_norm, render)
+            rollout_skill_trajectory(time_step, env, policy, preprocess_fn, traj_observer, skill, skill_length, return_aug_obs=True, s_norm=True, render=False)
         time_step = env.reset()
 
 
@@ -82,6 +82,7 @@ def rollout_skill_trajectory(time_step, env, policy, preprocess_fn, traj_observe
         action_step = policy.action(aug_ts)
         next_time_step = env.step(action_step.action)
         next_aug_ts = preprocess_fn(next_time_step, skill, s_0, is_tf_env)
+
         if return_aug_obs:
             traj = trajectory.from_transition(aug_ts, action_step, next_aug_ts)
         else:
@@ -91,6 +92,8 @@ def rollout_skill_trajectory(time_step, env, policy, preprocess_fn, traj_observe
             fn(traj)
 
         time_step = next_time_step
+
+    return time_step
 
 
 def preprocess_time_step(time_step, skill, s_norm, is_tf_env=True):

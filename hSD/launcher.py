@@ -40,12 +40,13 @@ def hierarchical_skill_discovery(num_layers: int, skill_lengths, log_dir, config
         skill_length = skill_lengths[i]
 
         # perform skill discovery on the current (wrapped) environment
-        agent = initialise_skill_discovery_agent(tf_py_environment.TFPyEnvironment(train_env),
+        agent = initialise_skill_discovery_agent(i,
+                                                 tf_py_environment.TFPyEnvironment(train_env),
                                                  tf_py_environment.TFPyEnvironment(eval_env),
                                                  skill_length=skill_length,
                                                  log_dir=get_layer_log_dir(log_dir, i))
 
-        policy, skill_model = agent.train()
+        policy, skill_model = train_skill_discovery(agent, i)
 
         # embed learned skills in environment with SkillEnv
         py_policy = py_tf_eager_policy.PyTFEagerPolicy(policy)  # convert tf policy to py policy for skill wrapper
@@ -59,10 +60,10 @@ def hierarchical_skill_discovery(num_layers: int, skill_lengths, log_dir, config
 
 
 @gin.configurable
-def get_base_env(env_name, point_env_step_size=0.1, point_env_box_size=1.) -> py_environment.PyEnvironment:
+def get_base_env(env_name, point_env_step_size=0.1) -> py_environment.PyEnvironment:
     """parses environment from name (string) and environment-specific hyperparameters"""
     if env_name == "point_env":
-        return point_environment.PointEnv(step_size=point_env_step_size, box_size=point_env_box_size)
+        return point_environment.PointEnv(step_size=point_env_step_size)
     elif env_name.startswith("maze"):
         maze_type = env_name.split("_", 1)[1]
         return maze_env.MazeEnv(maze_type=maze_type, action_range=point_env_step_size)
@@ -99,23 +100,17 @@ def get_layer_log_dir(log_dir, layer):
 
 
 @gin.configurable
-def initialise_skill_discovery_agent(train_env, eval_env, skill_length, objective, skill_prior, skill_dim, log_dir):
+def initialise_skill_discovery_agent(layer, train_env, eval_env, skill_length, objective, skill_prior, skill_dim, log_dir):
     obs_spec, action_spec, time_step_spec = parse_env_specs(train_env, skill_dim, objective)
 
     skill_prior_distribution, vis_skill_set = parse_skill_prior(skill_dim, skill_prior)
 
-    logger = Logger(log_dir,
-                    vis_skill_set=vis_skill_set,
-                    skill_length=skill_length)
+    logger = Logger(log_dir, vis_skill_set=vis_skill_set, skill_length=skill_length)
 
-    policy_learner = SACLearner(obs_spec,
-                                action_spec,
-                                time_step_spec)
+    policy_learner = SACLearner(obs_spec, action_spec, time_step_spec)
 
-    driver = BaseRolloutDriver(train_env,
-                               policy_learner.policy,
-                               skill_prior_distribution,
-                               skill_length=skill_length)
+    driver = init_rollout_driver(layer, train_env, policy_learner.policy, skill_prior_distribution,
+                                 skill_length=skill_length)
 
     skill_model = init_skill_model(objective, skill_prior, utils.hide_goal(train_env.observation_spec()).shape[0], skill_dim)
 
@@ -157,6 +152,11 @@ def parse_skill_prior(skill_dim, skill_prior):
 
 
 @gin.configurable
+def init_rollout_driver(i, env, policy, skill_prior, skill_length, **kwargs):
+    return BaseRolloutDriver(env, policy, skill_prior, skill_length, **vft(i, **kwargs))
+
+
+@gin.configurable
 def init_skill_model(objective, skill_prior, obs_dim, skill_dim):
     if objective == "s->z":
         input_dim, output_dim = obs_dim, skill_dim
@@ -185,6 +185,24 @@ def init_skill_discovery(objective, skill_prior, train_env, eval_env, rollout_dr
 
     else:
         raise ValueError("invalid objective")
+
+
+@gin.configurable
+def train_skill_discovery(agent, layer, **kwargs):
+    """accept tuples for layer-specific training parameters"""
+    return agent.train(**vft(layer, **kwargs))
+
+
+def vft(i, **kwargs):  # kwargs are either single value or iterable, if iterable get i-th value
+    new_kwargs = {}
+    for key, value in kwargs.items():
+        try:
+            _ = iter(value)
+        except TypeError:  # not iterable
+            new_kwargs[key] = value
+        else:  # iterable, throws if index out of bounds
+            new_kwargs[key] = value[i]
+    return new_kwargs
 
 
 if __name__ == '__main__':
