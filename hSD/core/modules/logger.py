@@ -77,7 +77,7 @@ class Logger:
             ax4.plot(range(len(sr)), sr, color='green', linewidth=3)
             ax4.set(title='intrinsic reward')
 
-            point_env_vis.skill_vis(ax5, env, policy_learner.policy, self.vis_skill_set, self.num_samples_per_skill, self.skill_length)
+            #point_env_vis.skill_vis(ax5, env, policy_learner.policy, self.vis_skill_set, self.num_samples_per_skill, self.skill_length)
 
             ax6.plot(range(len(alpha)), alpha, color='gray', linewidth=3)
             ax6.set(title='alpha')

@@ -51,7 +51,7 @@ def compare_cont_discrete_diayn():
     plt.show()
 
 
-def vis_saved_policy(ax, policy_dir, cont=True, title=None, env=None, skill_length=25, step_size=0.1, box_size=None, skill_dim=2, skill_samples=3):
+def vis_saved_policy(policy_dir, ax=None, cont=True, title=None, env=None, skill_length=25, step_size=0.1, box_size=None, skill_dim=2, skill_samples=3):
     policy = tf.compat.v2.saved_model.load(policy_dir)
     if env is None:
         env = TFPyEnvironment(point_environment.PointEnv(step_size=step_size, box_size=box_size))
@@ -60,6 +60,9 @@ def vis_saved_policy(ax, policy_dir, cont=True, title=None, env=None, skill_leng
     else:
         NUM_SKILLS = 8
         skills = tf.one_hot(list(range(NUM_SKILLS)), NUM_SKILLS)
+
+    if ax is None:
+        fig, ax = plt.subplots()
 
     point_env_vis.skill_vis(ax, env, policy, skills, 3, skill_length=skill_length, box_size=box_size)
 
@@ -194,9 +197,11 @@ def rollout_skill_sequence(ax, policy_dir, box_size, s_norm):
     point_env_vis.config_subplot(ax, box_size=box_size)
 
 
-def vis_rand_pol_states(ax, step_size=0.1, rollout_length=10, num_rollouts=100, keep_every=1, color='blue', alpha=0.8):
-    box_size = step_size * rollout_length
-    env = point_environment.PointEnv(step_size=step_size, box_size=box_size)
+def vis_rand_pol_states(ax, env=None, step_size=0.1, rollout_length=10, num_rollouts=100, keep_every=1, color='blue', alpha=0.8):
+    if env is None:
+        box_size = step_size * rollout_length
+        env = point_environment.PointEnv(step_size=step_size, box_size=box_size)
+
     policy = RandomPyPolicy(time_step_spec=env.time_step_spec(), action_spec=env.action_spec())
 
     states = []
@@ -213,11 +218,7 @@ def vis_rand_pol_states(ax, step_size=0.1, rollout_length=10, num_rollouts=100, 
     xs, ys = [s[0] for s in states], [s[1] for s in states]
     ax.scatter(xs, ys, color=color, alpha=alpha, s=0.5)
 
-    ax.set_xlim(-box_size, box_size)
-    ax.set_ylim(-box_size, box_size)
-    ax.set_xticks([-box_size, 0., box_size])
-    ax.set_yticks([-box_size, 0., box_size])
-    ax.set_aspect('equal', adjustable='box')
+    point_env_vis.config_subplot(ax)
 
 
 def skill_pol_coverage(ax, policy, cont=True, step_size=0.1, skill_length=10, num_rollouts=100, keep_every=1, color='blue', alpha=0.8):
@@ -238,11 +239,7 @@ def skill_pol_coverage(ax, policy, cont=True, step_size=0.1, skill_length=10, nu
     xs, ys = [s[0] for s in points], [s[1] for s in points]
     ax.scatter(xs, ys, color=color, alpha=alpha, s=0.5)
 
-    ax.set_xlim(-box_size, box_size)
-    ax.set_ylim(-box_size, box_size)
-    ax.set_xticks([-box_size, 0., box_size])
-    ax.set_yticks([-box_size, 0., box_size])
-    ax.set_aspect('equal', adjustable='box')
+    point_env_vis.config_subplot(ax)
 
 
 def comp_rand_pol_coverage():
@@ -360,14 +357,12 @@ def vis_hierarchy_policy_init_from_other_agent():
 
 
 def vis_hierarchy_policy():
-    hier_dir = "/home/max/RL/thesis/hSD/logs/traj_length/hier3/"
-    config_path = "/home/max/RL/thesis/hSD/logs/traj_length/hier3/config.gin"
-    gin.parse_config_file(config_path)
-    envs, agents = launcher.hierarchical_skill_discovery(config_path=config_path)
+    hier_dir = "/home/max/RL/thesis/hSD/logs/hiercomp/two-layer2/"
+    envs, agents = load_agent(hier_dir)
 
     env, l1_env = TFPyEnvironment(envs[0]), TFPyEnvironment(envs[1])
     l1_policy, l2_policy = agents[0].policy_learner.policy, agents[1].policy_learner.policy
-    l2_policy = tf.compat.v2.saved_model.load("/home/max/RL/thesis/hSD/logs/traj_length/hier3/1/policies/policy_9")
+    l2_policy = tf.compat.v2.saved_model.load("/home/max/RL/thesis/hSD/logs/hiercomp/two-layer2/1/policies/policy_25")
 
     skills = utils.discretize_continuous_space(-1, 1, 3, 2)
 
@@ -380,10 +375,10 @@ def vis_hierarchy_policy():
     ax1.set_title(r"$T=10$")
     point_env_vis.skill_vis(ax2, l1_env, l2_policy, skills, 3, skill_length=10, box_size=4)
     ax2.set_title(r"$T=(10,10)$")
-    flat_dir = "../logs/traj_length/hier3flat/"
-    policy_dir = "../logs/traj_length/hier3flat/0/policies/policy_15"
+    flat_dir = "../logs/hiercomp/flat/"
+    policy_dir = "../logs/hiercomp/flat/0/policies/policy_36"
 
-    vis_saved_policy(ax3, policy_dir, skill_length=100, step_size=0.1, box_size=4, skill_dim=2, skill_samples=3)
+    vis_saved_policy(policy_dir, ax3, skill_length=100, step_size=0.1, box_size=4, skill_dim=2, skill_samples=3)
     ax3.set_title(r"$T=100$")
 
     dah1 = np.load(os.path.join(hier_dir, "0/stats/discrim_acc.npy"))
@@ -393,17 +388,19 @@ def vis_hierarchy_policy():
     irh = np.load(os.path.join(hier_dir, "1/stats/intrinsic_rewards.npy"))
     irf = np.load(os.path.join(flat_dir, "0/stats/intrinsic_rewards.npy"))
 
+    T = 35
+
     #ax4.plot(range(15), dah1[:15], color="red", linewidth=2, alpha=0.6)
-    ax4.plot(range(15), dah[:15], color="blue", linewidth=2, alpha=0.6)
-    ax4.plot(range(15), daf[:15], color="green", linewidth=2, alpha=0.6)
+    ax4.plot(range(T), dah[:T], color="blue", linewidth=2, alpha=0.6)
+    ax4.plot(range(T), daf[:T], color="green", linewidth=2, alpha=0.6)
 
     ax4.set_title("Discriminator Accuracy")
     ax4.set_ylabel(r"$E[q_\phi(z|s)]$")
     ax4.set_xlabel("epoch")
 
     #ax5.plot(range(15), irh1[:15], color="red", label=r"$T=10$", linewidth=2, alpha=0.6)
-    ax5.plot(range(15), irh[:15], color="blue", label=r"$T=(10,10)$", linewidth=2, alpha=0.6)
-    ax5.plot(range(15), irf[:15], color="green", label=r"$T=100$", linewidth=2, alpha=0.6)
+    ax5.plot(range(T), irh[:T], color="blue", label=r"$T=(10,10)$", linewidth=2, alpha=0.6)
+    ax5.plot(range(T), irf[:T], color="green", label=r"$T=100$", linewidth=2, alpha=0.6)
     ax5.set_title("Intrinsic Reward")
     ax5.set_ylabel(r"$E[r_z(s)]$")
     ax5.set_xlabel("epoch")
@@ -427,14 +424,16 @@ def maze_exploration():
     maze_dir = "../logs/maze"
     envs, agents = load_agent(maze_dir)
 
-    l1_env = envs[1]
-    rand_pol = RandomPyPolicy(l1_env.time_step_spec(), l1_env.action_spec())
-    policy = agents[0].policy_learner.policy
+    l0_env, l1_env = envs[0:2]
+    l0_policy, l1_policy = agents[0].policy_learner.policy, agents[1].policy_learner.policy
 
     skills = utils.discretize_continuous_space(-1, 1, 2, 2)
+    #skills = [[-1., -1.]]
 
-    fig, ax = plt.subplots()
-    point_env_vis.skill_vis(ax, l1_env, rand_pol, skills, 1, 15)
+    fig, (ax1, ax2, ax3) = plt.subplots(1, 3)
+    vis_rand_pol_states(ax1, l0_env, rollout_length=225, keep_every=15, num_rollouts=100)
+    point_env_vis.skill_vis(ax2, l0_env, l0_policy, skills, 1, 15)
+    vis_rand_pol_states(ax3, l1_env, rollout_length=15, num_rollouts=100)
 
     plt.show()
 
@@ -565,4 +564,4 @@ def find_config_file(dir):
 
 
 if __name__ == '__main__':
-    maze_exploration()
+    vis_hierarchy_policy()

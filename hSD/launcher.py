@@ -83,6 +83,8 @@ def get_base_env(env_name, point_env_step_size=0.1) -> py_environment.PyEnvironm
         return suite_gym.load("FetchSlide-v1")
     elif env_name == "mountaincar":
         return suite_gym.load("MountainCarContinuous-v0")
+    elif env_name == "handreach":
+        return suite_gym.load("HandReach-v0")
 
     raise ValueError("invalid environment name")
 

@@ -16,7 +16,6 @@ tf.compat.v1.enable_v2_behavior()
 class PointEnv(py_environment.PyEnvironment):
 
   def __init__(self, step_size=0.1, box_size=None, dim=2):
-    """we keep the box_size parameter for now, to not break configs that use it..."""
     super(PointEnv, self).__init__()
     assert(step_size > 0)
 
