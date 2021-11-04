@@ -18,6 +18,7 @@ from core.modules import utils
 from core.modules import rollout_drivers
 
 from env import skill_environment
+from env.maze import maze_env, mazes
 
 from mpl_toolkits import axes_grid1
 
@@ -413,6 +414,23 @@ def vis_hierarchy_policy():
     plt.show()
 
 
+def vis_hierarchy_run(agent_path):
+    envs, agents = load_agent(agent_path)
+
+    fig, axes = plt.subplots(1, len(agents))
+
+    skills = utils.discretize_continuous_space(-1, 1, 2, 2)
+
+    for i in range(len(agents)):
+        ax, env, policy = axes[i], envs[i], agents[i].policy_learner.policy
+        skill_length = agents[i].rollout_driver.skill_length
+        point_env_vis.skill_vis(ax, env, policy, skills=skills, rollouts_per_skill=1, skill_length=skill_length)
+
+    plt.show()
+
+
+
+
 def load_agent(path):
     config_path = find_config_file(path)
     gin.parse_config_file(config_path)
@@ -563,5 +581,20 @@ def find_config_file(dir):
     return config_file
 
 
+def vis_mazes():
+    maze_types = list(point_env_vis.ENV_LIMS.keys())
+
+    fig, axes = plt.subplots(nrows=len(maze_types) // 4 + 1, ncols=4, figsize=(8, 8))
+
+    for i in range(len(maze_types)):
+        i1, i2 = i // 4, i % 4
+        ax = axes[i1][i2]
+        maze = maze_types[i]
+
+        point_env_vis.config_subplot(ax, maze_type=maze)
+
+    plt.show()
+
+
 if __name__ == '__main__':
-    vis_hierarchy_policy()
+    vis_hierarchy_run("../logs/maze_square_bottleneck")
