@@ -63,7 +63,7 @@ class MazeEnv(PyEnvironment):
     def _reset(self):
         self._episode_ended = False
         self._step_count = 0
-        self._state = self.maze.fixed_start()  # for training this is fine, for visualisation we want to fix the start
+        self._state = self.maze.sample_start()  # for training this is fine, for visualisation we want to fix the start
         return ts.restart(np.array(self._state, dtype=np.float32))
 
     def _step(self, action):

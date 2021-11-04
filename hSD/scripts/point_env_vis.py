@@ -3,7 +3,7 @@ import matplotlib.pyplot as plt
 import tensorflow as tf
 from env.maze import maze_env
 
-from core.modules import rollout_drivers
+from core.modules import rollout_drivers, utils
 
 
 
@@ -26,7 +26,7 @@ def get_cmap(num_skills):
     return cmap
 
 
-def config_subplot(ax, maze_type="square_a", box_size=None, extra_lim=0., title=None):
+def config_subplot(ax, maze_type="square_bottleneck", box_size=None, extra_lim=0., title=None):
     if title is not None:
         ax.set_title(title, fontsize=14)
 
@@ -92,7 +92,7 @@ def collect_skill_trajectories(env, policy, skills, rollouts_per_skill, skill_le
 
 
 def extract_obs(traj):
-    return [subtraj.observation for subtraj in traj]
+    return [tf.reshape(utils.hide_goal(subtraj.observation), (-1)) for subtraj in traj]
 
 
 def categorical_discrim_heatmap(ax, discriminator):

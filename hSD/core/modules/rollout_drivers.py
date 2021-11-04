@@ -69,8 +69,9 @@ def collect_experience_for_skills(env, policy, skill_length, preprocess_fn, traj
         time_step = env.reset()
 
 
-def rollout_skill_trajectory(time_step, env, policy, preprocess_fn, traj_observer, skill, skill_length, return_aug_obs=True, s_norm=False, render=False):
-    is_tf_env = isinstance(env, TFEnvironment)
+def rollout_skill_trajectory(time_step, env, policy, preprocess_fn, traj_observer, skill, skill_length,
+                             return_aug_obs=True, s_norm=False, render=False, return_intermediate_steps=False):
+    is_tf_env = isinstance(env, TFEnvironment)  # tf envs use
 
     s_0 = utils.hide_goal(time_step.observation) if s_norm else None
 
@@ -80,7 +81,12 @@ def rollout_skill_trajectory(time_step, env, policy, preprocess_fn, traj_observe
 
         aug_ts = preprocess_fn(time_step, skill, s_0, is_tf_env)
         action_step = policy.action(aug_ts)
-        next_time_step = env.step(action_step.action)
+
+        try:
+            next_time_step = env.step(action_step.action, return_intermediate_steps=return_intermediate_steps)
+        except TypeError:
+            next_time_step = env.step(action_step.action)
+
         next_aug_ts = preprocess_fn(next_time_step, skill, s_0, is_tf_env)
 
         if return_aug_obs:
