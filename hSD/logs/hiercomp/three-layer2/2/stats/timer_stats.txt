@@ -1,0 +1,51 @@
+
+
+---Begin Timer Report (root)---
+Timer Name:          root (running)
+Total Time (s):      2284
+Stamps Sum:          2284
+Self Time (Agg.):    0.00631
+
+
+Intervals
+---------
+exploration ........ 2029
+skill model training  47.31
+rl training ........ 204.7
+logging ............ 3.263
+
+
+Loop Iterations
+---------------
+
+Timer:       root
+
+               Total    Mean     Max     Min     Num
+              ------  ------  ------  ------  ------
+exploration   2028.83  135.26  453.24  112.09      15
+skill model training   47.31    3.15    3.40    3.10      15
+rl training   204.72   13.65   14.76   13.45      15
+logging         3.26    0.23    1.64    0.00      14
+
+
+Iter.   exploration  skill model    rl training       logging
+-----       -------       -------       -------       -------
+0            453.24          3.40         14.76          0.00
+1            112.80          3.12         13.62          0.00
+2            112.21          3.28         13.46          0.00
+3            112.72          3.12         13.65          0.00
+4            112.78          3.13         13.65          1.64
+5            112.09          3.10         13.59          0.00
+6            112.34          3.26         13.46          0.00
+7            112.17          3.11         13.66          0.00
+8            112.72          3.11         13.45          0.00
+9            112.79          3.11         13.66          1.59
+10           112.45          3.10         13.62          0.00
+11           112.40          3.11         13.46          0.00
+12           113.06          3.11         13.62          0.00
+13           112.59          3.14         13.48          0.00
+14           112.47          3.11         13.60              
+
+
+---End Timer Report (root)---
+

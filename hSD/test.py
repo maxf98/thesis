@@ -36,3 +36,7 @@ for _ in range(2000):
         print("terminated")
 
 """
+
+
+t = [1, 2, 3, 4]
+print(t[:-1])

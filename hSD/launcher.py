@@ -4,6 +4,7 @@ import shutil
 
 import tensorflow as tf
 import tensorflow_probability
+import gym
 
 from env import point_environment, skill_environment
 from env.maze import maze_env
@@ -84,7 +85,7 @@ def get_base_env(env_name, point_env_step_size=0.1) -> py_environment.PyEnvironm
     elif env_name == "mountaincar":
         return suite_gym.load("MountainCarContinuous-v0")
     elif env_name == "handreach":
-        return suite_gym.load("HandReach-v0")
+        return suite_gym.load("HandReach-v0", max_episode_steps=0, gym_kwargs={"n_substeps": 1, "relative_control": True})
 
     raise ValueError("invalid environment name")
 
@@ -124,7 +125,7 @@ def initialise_skill_discovery_agent(layer, train_env, eval_env, skill_length, o
     return agent
 
 
-def parse_env_specs(env, skill_dim, objective):
+def parse_env_specs(env, skill_dim, objective='s->z'):
     obs_spec, action_spec, time_step_spec = env.observation_spec(), env.action_spec(), env.time_step_spec()
     obs_spec = utils.hide_goal(obs_spec)
     obs_dim = obs_spec.shape.as_list()[0]

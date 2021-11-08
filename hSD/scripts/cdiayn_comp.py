@@ -13,6 +13,7 @@ import launcher
 
 from tf_agents.environments.tf_py_environment import TFPyEnvironment
 from tf_agents.policies.random_py_policy import RandomPyPolicy
+from tf_agents.policies.py_tf_eager_policy import PyTFEagerPolicy, SavedModelPyTFEagerPolicy
 
 from core.modules import utils
 from core.modules import rollout_drivers
@@ -256,16 +257,16 @@ def comp_rand_pol_coverage():
 
 
 def comp_traj_length():
-    policy_10_dir = "../logs/traj_length/l1/0/policies/policy_10"
+    policy_10_dir = "../logs/nav/traj_length/l1/0/policies/policy_10"
     policy_10 = tf.compat.v2.saved_model.load(policy_10_dir)
-    policy_20_dir = "../logs/traj_length/l2-rb/0/policies/policy_10"
+    policy_20_dir = "../logs/nav/traj_length/l2-rb/0/policies/policy_10"
     policy_20 = tf.compat.v2.saved_model.load(policy_20_dir)
-    policy_100_dir = "../logs/traj_length/l3-rb/0/policies/policy_10"
+    policy_100_dir = "../logs/nav/traj_length/l3-rb/0/policies/policy_10"
     policy_100 = tf.compat.v2.saved_model.load(policy_100_dir)
 
-    policy_20_dir = "../logs/traj_length/l2-rb/0/policies/policy_30"
+    policy_20_dir = "../logs/nav/traj_length/l2-rb/0/policies/policy_30"
     policy_20_f = tf.compat.v2.saved_model.load(policy_20_dir)
-    policy_100_dir = "../logs/traj_length/l3-rb/0/policies/policy_100"
+    policy_100_dir = "../logs/nav/traj_length/l3-rb/0/policies/policy_100"
     policy_100_f = tf.compat.v2.saved_model.load(policy_100_dir)
 
     # fig, ((ax1, ax2, ax3), (ax4, ax5, ax6), (ax7, ax8, ax9)) = plt.subplots(3, 3)
@@ -310,8 +311,8 @@ def vis_reach_goal_state_behaviour():
     policy_dir1 = "../logs/traj_length/l1e/0/policies/policy_10"
     policy_dir2 = "../logs/traj_length/l1e/0/policies/policy_30"
     policy_dir3 = "../logs/traj_length/l1e/0/policies/policy_50"
-    discrim_acc = np.load("../logs/traj_length/l1e/0/stats/discrim_acc.npy")
-    ir = np.load("../logs/traj_length/l1e/0/stats/intrinsic_rewards.npy")
+    discrim_acc = np.load("../logs/nav/traj_length/l1e/0/stats/discrim_acc.npy")
+    ir = np.load("../logs/nav/traj_length/l1e/0/stats/intrinsic_rewards.npy")
 
     fig = plt.figure(constrained_layout=True)
     gs = fig.add_gridspec(2, 6, height_ratios=[2, 1])
@@ -336,8 +337,8 @@ def vis_reach_goal_state_behaviour():
 
 
 def vis_hierarchy_policy_init_from_other_agent():
-    base_config_path = "/home/max/RL/thesis/hSD/logs/traj_length/l1e/config3.gin"
-    config_path = "/home/max/RL/thesis/hSD/logs/traj_length/hier_l1e/config2.gin"
+    base_config_path = "/logs/nav/traj_length/l1e/config3.gin"
+    config_path = "/logs/nav/traj_length/hier_l1e/config2.gin"
     gin.parse_config_file(base_config_path)
     base_envs, base_agents = launcher.hierarchical_skill_discovery(config_path=base_config_path)
     gin.parse_config_file(config_path)
@@ -419,16 +420,15 @@ def vis_hierarchy_run(agent_path):
 
     fig, axes = plt.subplots(1, len(agents))
 
-    skills = utils.discretize_continuous_space(-1, 1, 2, 2)
+    skills = utils.discretize_continuous_space(-1, 1, 3, 2)
 
     for i in range(len(agents)):
         ax, env, policy = axes[i], envs[i], agents[i].policy_learner.policy
         skill_length = agents[i].rollout_driver.skill_length
-        point_env_vis.skill_vis(ax, env, policy, skills=skills, rollouts_per_skill=1, skill_length=skill_length)
+        box_size = 3
+        point_env_vis.skill_vis(ax, env, policy, box_size=box_size, skills=skills, rollouts_per_skill=1, skill_length=skill_length)
 
     plt.show()
-
-
 
 
 def load_agent(path):
@@ -439,7 +439,7 @@ def load_agent(path):
 
 
 def maze_exploration():
-    maze_dir = "../logs/maze"
+    maze_dir = "../logs/nav/maze"
     envs, agents = load_agent(maze_dir)
 
     l0_env, l1_env = envs[0:2]
@@ -514,7 +514,7 @@ def add_colorbar(im, aspect=20, pad_fraction=0.5, **kwargs):
 
 def vis_skill_smoothness():
     # skill interpolation and discriminator smoothness...
-    agent_dir = "../logs/traj_length/hier3/"
+    agent_dir = "../logs/nav/traj_length/hier3/"
     config_path = os.path.join(agent_dir, "config.gin")
     gin.parse_config_file(config_path)
     envs, agents = launcher.hierarchical_skill_discovery(config_path=config_path)
@@ -596,5 +596,42 @@ def vis_mazes():
     plt.show()
 
 
+def points_along_axis(a, num_points, dim, default_value=0.0):
+    skills = [[default_value for _ in range(dim)] for _ in range(num_points)]
+    for p in range(num_points):
+        skills[p][a] = -1. + p * (2 / num_points)
+    return skills
+
+
+def get_py_policy(env, skill_dim, policy_dir):
+    obs_spec = utils.hide_goal(env.observation_spec())
+    obs_dim = obs_spec.shape[0]
+    obs_spec = utils.aug_obs_spec(obs_spec, obs_dim + skill_dim)
+    time_step_spec = env.time_step_spec()._replace(observation=obs_spec)
+    policy = SavedModelPyTFEagerPolicy(policy_dir, action_spec=env.action_spec(), time_step_spec=time_step_spec)
+    return policy
+
+
+def vis_robotics_env(agent_dir):
+    envs, agents = load_agent(agent_dir)
+
+    base_env = envs[0]
+    policies = [agent.policy_learner.policy for agent in agents]
+    policies[1] = SavedModelPyTFEagerPolicy(os.path.join(agent_dir, "1/policies/policy_50"), time_step_spec=envs[1].time_step_spec(), action_spec=envs[1].action_spec())
+    skill_lengths = [agent.rollout_driver.skill_length for agent in agents]
+
+    experience = [[] for _ in agents]
+    traj_observer = [[experience[i].append] for i in range(len(agents)-1, -1, -1)]
+
+    skills = utils.discretize_continuous_space(-2, 2, 2, agents[0].skill_dim)
+    # skills = points_along_axis(2, 10, agent.skill_dim, default_value=-10.0)
+    skills = [[s for _ in range(1)] for s in skills]
+
+    #skills = [[[-1., -1., 1.] for _ in range(10)] for _ in range(2)]
+
+    rollout_drivers.collect_experience_for_skills(base_env, policies, rollout_drivers.preprocess_time_step, traj_observer, skills, skill_lengths, render=True)
+
+
 if __name__ == '__main__':
-    vis_hierarchy_run("../logs/maze_square_bottleneck")
+    agent_dir = "/home/max/RL/thesis/hSD/logs/hand/handreach-dads10"
+    vis_robotics_env(agent_dir)
