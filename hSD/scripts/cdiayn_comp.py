@@ -612,26 +612,39 @@ def get_py_policy(env, skill_dim, policy_dir):
     return policy
 
 
+def random_policy_vis(env_name, num_steps):
+    env = launcher.get_base_env(env_name)
+    policy = RandomPyPolicy(env.time_step_spec(), env.action_spec())
+
+    step = env.reset()
+    for _ in range(num_steps):
+        env.render(mode='human')
+        action_step = policy.action(step)
+        step = env.step(action_step.action)
+
+
 def vis_robotics_env(agent_dir):
     envs, agents = load_agent(agent_dir)
 
     base_env = envs[0]
     policies = [agent.policy_learner.policy for agent in agents]
-    policies[1] = SavedModelPyTFEagerPolicy(os.path.join(agent_dir, "1/policies/policy_50"), time_step_spec=envs[1].time_step_spec(), action_spec=envs[1].action_spec())
+    #policies[1] = SavedModelPyTFEagerPolicy(os.path.join(agent_dir, "1/policies/policy_70"), time_step_spec=envs[1].time_step_spec(), action_spec=envs[1].action_spec())
     skill_lengths = [agent.rollout_driver.skill_length for agent in agents]
 
     experience = [[] for _ in agents]
     traj_observer = [[experience[i].append] for i in range(len(agents)-1, -1, -1)]
 
-    skills = utils.discretize_continuous_space(-2, 2, 2, agents[0].skill_dim)
-    # skills = points_along_axis(2, 10, agent.skill_dim, default_value=-10.0)
-    skills = [[s for _ in range(1)] for s in skills]
+    skills = utils.discretize_continuous_space(-1, 1, 1, agents[0].skill_dim)
+    #skills = points_along_axis(1, 4, agents[0].skill_dim, default_value=1.0)
+    #skills = utils.one_hots_for_num_skills(agents[0].skill_dim)
+    skills = [[s for _ in range(3)] for s in skills]
 
-    #skills = [[[-1., -1., 1.] for _ in range(10)] for _ in range(2)]
+    #skills = [[[0., 0., 0., 0.] for _ in range(1)] for _ in range(4)]
 
     rollout_drivers.collect_experience_for_skills(base_env, policies, rollout_drivers.preprocess_time_step, traj_observer, skills, skill_lengths, render=True)
 
 
 if __name__ == '__main__':
-    agent_dir = "/home/max/RL/thesis/hSD/logs/hand/handreach-dads10"
+    agent_dir = "/home/max/RL/thesis/hSD/logs/hand/handreach-dads"
     vis_robotics_env(agent_dir)
+    #random_policy_vis("handreach", 2000)

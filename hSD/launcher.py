@@ -85,8 +85,9 @@ def get_base_env(env_name, point_env_step_size=0.1) -> py_environment.PyEnvironm
     elif env_name == "mountaincar":
         return suite_gym.load("MountainCarContinuous-v0")
     elif env_name == "handreach":
-        return suite_gym.load("HandReach-v0", max_episode_steps=0, gym_kwargs={"n_substeps": 1, "relative_control": True})
-
+        return suite_gym.load("HandReach-v0", max_episode_steps=0, gym_kwargs={"n_substeps": 1, "relative_control": False})
+    elif env_name == "handpen":
+        return suite_gym.load("HandManipulatePen-v0", max_episode_steps=0)
     raise ValueError("invalid environment name")
 
 
@@ -175,14 +176,15 @@ def init_skill_model(objective, skill_prior, obs_dim, skill_dim):
     else:
         raise ValueError("invalid objective")
 
-
+@gin.configurable
 def init_skill_discovery(objective, skill_prior, train_env, eval_env, rollout_driver, skill_model, policy_learner,
-                         skill_dim, logger):
+                         skill_dim, logger, num_prior_samples=400):
     if objective == 's->z':
         if skill_prior == 'discrete_uniform':
             return DIAYN(train_env, eval_env, rollout_driver, skill_model, policy_learner, skill_dim, logger)
         elif skill_prior == 'cont_uniform':
-            return ContDIAYN(train_env, eval_env, rollout_driver, skill_model, policy_learner, skill_dim, logger)
+            return ContDIAYN(train_env, eval_env, rollout_driver, skill_model, policy_learner, skill_dim, logger,
+                             num_prior_samples=num_prior_samples)
     elif objective == 'sz->s_p':
         return DADS(train_env, eval_env, rollout_driver, skill_model, policy_learner, skill_dim, logger)
 

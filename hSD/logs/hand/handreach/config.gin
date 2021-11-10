@@ -1,13 +1,13 @@
 hierarchical_skill_discovery.num_layers = 1
 hierarchical_skill_discovery.skill_lengths = (100,)
-hierarchical_skill_discovery.log_dir = "/home/max/RL/thesis/hSD/logs/handreach"
+hierarchical_skill_discovery.log_dir = "/home/max/RL/thesis/hSD/logs/hand/handreach"
 
 get_base_env.env_name = "handreach"
 get_base_env.point_env_step_size = 0.1
 
 initialise_skill_discovery_agent.objective = 's->z'
 initialise_skill_discovery_agent.skill_prior = 'cont_uniform'
-initialise_skill_discovery_agent.skill_dim = 4
+initialise_skill_discovery_agent.skill_dim = 12
 
 init_rollout_driver.online_buffer_size = 1000  #should be equal to collect_steps, technically we shouldn't make this an independent parameter
 init_rollout_driver.offline_buffer_size = 1000

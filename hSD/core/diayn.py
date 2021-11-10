@@ -1,3 +1,4 @@
+import gin
 from core.skill_discovery import SkillDiscovery
 
 import tensorflow as tf
@@ -87,7 +88,7 @@ class ContDIAYN(DIAYN):
                  policy_learner: PolicyLearner,
                  skill_dim,
                  logger=None,
-                 num_prior_samples=100
+                 num_prior_samples=400
                  ):
         super(ContDIAYN, self).__init__(train_env, eval_env, rollout_driver, skill_model, policy_learner, skill_dim, logger)
         self.num_prior_samples = num_prior_samples
