@@ -1,0 +1,6 @@
+setup.py
+handrf.egg-info/PKG-INFO
+handrf.egg-info/SOURCES.txt
+handrf.egg-info/dependency_links.txt
+handrf.egg-info/requires.txt
+handrf.egg-info/top_level.txt

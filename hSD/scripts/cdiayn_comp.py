@@ -3,9 +3,10 @@ import os
 import gin
 import tensorflow as tf
 import tensorflow_probability as tfp
-tfd = tfp.distributions
 import numpy as np
 import matplotlib.pyplot as plt
+
+import PIL.Image
 
 from env import point_environment
 from scripts import point_env_vis
@@ -22,6 +23,8 @@ from env import skill_environment
 from env.maze import maze_env, mazes
 
 from mpl_toolkits import axes_grid1
+
+tfd = tfp.distributions
 
 
 def compare_cont_discrete_diayn():
@@ -596,13 +599,6 @@ def vis_mazes():
     plt.show()
 
 
-def points_along_axis(a, num_points, dim, default_value=0.0):
-    skills = [[default_value for _ in range(dim)] for _ in range(num_points)]
-    for p in range(num_points):
-        skills[p][a] = -1. + p * (2 / num_points)
-    return skills
-
-
 def get_py_policy(env, skill_dim, policy_dir):
     obs_spec = utils.hide_goal(env.observation_spec())
     obs_dim = obs_spec.shape[0]
@@ -628,23 +624,162 @@ def vis_robotics_env(agent_dir):
 
     base_env = envs[0]
     policies = [agent.policy_learner.policy for agent in agents]
-    #policies[1] = SavedModelPyTFEagerPolicy(os.path.join(agent_dir, "1/policies/policy_70"), time_step_spec=envs[1].time_step_spec(), action_spec=envs[1].action_spec())
+    #policies[0] = SavedModelPyTFEagerPolicy(os.path.join(agent_dir, "0/policies/policy_110"), time_step_spec=envs[0].time_step_spec(), action_spec=envs[0].action_spec())
     skill_lengths = [agent.rollout_driver.skill_length for agent in agents]
 
     experience = [[] for _ in agents]
     traj_observer = [[experience[i].append] for i in range(len(agents)-1, -1, -1)]
 
-    skills = utils.discretize_continuous_space(-1, 1, 1, agents[0].skill_dim)
+    skills = utils.discretize_continuous_space(-1, 1, 2, agents[0].skill_dim)
     #skills = points_along_axis(1, 4, agents[0].skill_dim, default_value=1.0)
     #skills = utils.one_hots_for_num_skills(agents[0].skill_dim)
-    skills = [[s for _ in range(3)] for s in skills]
+    skills = [[s for _ in range(5)] for s in skills]
 
     #skills = [[[0., 0., 0., 0.] for _ in range(1)] for _ in range(4)]
 
     rollout_drivers.collect_experience_for_skills(base_env, policies, rollout_drivers.preprocess_time_step, traj_observer, skills, skill_lengths, render=True)
 
 
+def comp_runs():
+    dirs = [("../logs/thesis_hand/longerep10", "10"),
+                ("../logs/thesis_hand/longerep50", "50"),
+                ("../logs/thesis_hand/longerep100", "100")]
+
+    fig, (ax1, ax2, ax3) = plt.subplots(1, 3)
+
+    for dir, label in dirs:
+        discrim_acc = np.load(os.path.join(dir, "0/stats/discrim_acc.npy"))
+        ir = np.load(os.path.join(dir, "0/stats/intrinsic_rewards.npy"))
+        sac_loss = np.load(os.path.join(dir, "0/stats/policy_loss.npy"))
+
+        ax1.plot(range(len(discrim_acc)), discrim_acc, linewidth=2, alpha=0.5, label=label)
+        ax2.plot(range(len(ir)), ir, linewidth=2, label=label, alpha=0.5)
+        ax3.plot(range(len(sac_loss)), sac_loss, linewidth=2, label=label, alpha=0.5)
+
+    ax1.set_title("Discriminator accuracy")
+    ax1.set_ylabel(r"$E[q_\phi(z|s)]$")
+    ax1.set_xlabel("epoch")
+
+    ax2.set_title("Intrinsic reward")
+    ax2.set_ylabel(r"$E[r_z(s)]$")
+    ax2.set_xlabel("epoch")
+
+    ax3.legend()
+
+    fig.savefig("../screenshots/traj_length_comp")
+
+    plt.show()
+
+
+def generate_screenshots(agent_dir, screener_dir, skills=None):
+    if skills is None:
+        skills = utils.discretize_continuous_space(-1, 1, 1, 4)
+    for i, skill in enumerate(skills):
+        generate_skill_screenshot(agent_dir, skill, os.path.join(screener_dir, f"img_{i}.png"))
+
+
+def generate_skill_screenshot(agent_dir, skill, dir):
+    # not the cleanest way to do this, but somethings messed up with my GLEW initialisation and this is quicker than fixing that...
+    envs, agents = load_agent(agent_dir)
+    base_env = envs[0]
+    policies = [agent.policy_learner.policy for agent in agents]
+    skill_lengths = [agent.rollout_driver.skill_length for agent in agents]
+
+    #policies[0] = SavedModelPyTFEagerPolicy(os.path.join(agent_dir, "1/policies/policy_80"), time_step_spec=envs[0].time_step_spec(), action_spec=envs[0].action_spec())
+
+    #policies, skill_lengths = policies[:1], skill_lengths[:1]
+
+    NUM_REPS = 1 # 200 / skill_lengths[0]
+
+    time_step = base_env.reset()
+    for _ in range(int(NUM_REPS)):
+        time_step = rollout_drivers.rollout_hier_skill_trajectory(time_step, base_env, policies, rollout_drivers.preprocess_time_step, [[], []], skill, skill_lengths, render=True)
+    rgbarr = base_env.render(mode="rgb_array")
+    img = PIL.Image.fromarray(rgbarr)
+
+    img.save(dir)
+
+
+def make_skill_grid(screener_dir, filename=None):
+    fps = utils.get_sorted_files(screener_dir)
+    print(fps)
+    imgs = [PIL.Image.open(os.path.join(screener_dir, fp)) for fp in fps]
+    img = make_img_array(imgs)
+    img.show()
+
+    if filename is not None:
+        img.save(f"../screenshots/hand/{filename}.png")
+
+
+def make_img_array(imgs):
+    def get_concat_h(im1, im2):
+        dst = PIL.Image.new("RGBA", (im1.width + im2.width, im1.height))
+        dst.paste(im1, (0,0))
+        dst.paste(im2, (im1.width, 0))
+        return dst
+
+    def get_concat_v(im1, im2):
+        dst = PIL.Image.new("RGBA", (im1.width, im1.height + im2.height))
+        dst.paste(im1, (0, 0))
+        dst.paste(im2, (0, im1.height))
+        return dst
+
+    def get_concat_h_multi(imgs):
+        _im = imgs.pop(0)
+        for im in imgs:
+            _im = get_concat_h(_im, im)
+        return _im
+
+    def get_concat_v_multi(imgs):
+        _im = imgs.pop(0)
+        for im in imgs:
+            _im = get_concat_v(_im, im)
+        return _im
+
+    h_imgs = [get_concat_h_multi(imgs[i: i + 4]) for i in range(0, len(imgs), 4)]
+    img = get_concat_v_multi(h_imgs)
+
+    return img
+
+
+def cutoutgreenbackground(img, new_alpha=255):
+    img = img.convert("RGBA")
+    data = img.getdata()
+    newData = []
+    for item in data:
+        r, g, b, a = item
+        if (113 <= r <= 117) and g == 220 and b == 146:
+            newData.append((255, 255, 255, 0))
+        else:
+            newData.append((r, g, b, new_alpha))
+
+    img.putdata(newData)
+    return img
+
+
+def blend_images(screener_dir):
+    fps = os.listdir(screener_dir)
+
+    imgs = [PIL.Image.open(os.path.join(screener_dir, fp)) for fp in fps]
+
+    im = imgs.pop(0)
+
+    for iim in imgs:
+        iim = cutoutgreenbackground(iim, 200)
+        im.paste(iim, (0,0), iim)
+
+    im.show()
+
+
 if __name__ == '__main__':
-    agent_dir = "/home/max/RL/thesis/hSD/logs/hand/handreach-dads"
-    vis_robotics_env(agent_dir)
-    #random_policy_vis("handreach", 2000)
+    agent_dir = "../logs/thesis_hand/hier"
+    screener_dir = "../screenshots/hand/interpol/"
+
+    skills = utils.discretize_continuous_space(-1, 1, 2, 4)
+    skills = utils.points_along_axis(3, 4, 4, -1.) #+ utils.points_along_axis(1, 4, 4) + utils.points_along_axis(2, 4, 4) + utils.points_along_axis(3, 4, 4)
+    skills = utils.random_samples(-1, 1, 4, 12)
+
+    generate_screenshots(agent_dir, screener_dir, skills)
+    make_skill_grid("../screenshots/hand/interpol", "random_samples")
+    #blend_images("../screenshots/hand/interpol")
+

@@ -1,6 +1,8 @@
 import numpy as np
 import tensorflow as tf
 import itertools
+import os
+import numpy
 import io
 import shutil
 import zipfile
@@ -17,8 +19,8 @@ def aug_obs_spec(obs_spec, new_dim):
 
 
 def discretize_continuous_space(min, max, points_per_axis, dim):
-    step = (max-min) / points_per_axis
-    skill_axes = [[min + step * x for x in range(points_per_axis + 1)]] * dim
+    step = (max-min) / (points_per_axis - 1)
+    skill_axes = [[min + step * x for x in range(points_per_axis)]] * dim
     skills = [skill for skill in itertools.product(*skill_axes)]
     return skills
 
@@ -27,5 +29,20 @@ def one_hots_for_num_skills(num_skills):
     return tf.one_hot(list(range(num_skills)), num_skills)
 
 
+def points_along_axis(a, num_points, dim, default_value=0.0):
+    skills = [[default_value for _ in range(dim)] for _ in range(num_points)]
+    for p in range(num_points):
+        skills[p][a] = -1. + p * (2 / num_points)
+    return skills
+
+
+def random_samples(min, max, dim, num_samples):
+    return [[np.random.uniform(min, max) for _ in range(dim)] for _ in range(num_samples)]
+
+
 def hide_goal(obs):
     return obs['observation'] if isinstance(obs, OrderedDict) else obs
+
+
+def get_sorted_files(dir):
+    return sorted(os.listdir(dir), key=lambda x: os.path.getmtime(os.path.join(dir, x)))
