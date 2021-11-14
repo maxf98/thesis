@@ -2,6 +2,7 @@ import matplotlib.pyplot as plt
 
 import tensorflow as tf
 from env.maze import maze_env
+from tf_agents.environments.tf_environment import TFEnvironment
 
 from core.modules import rollout_drivers, utils
 
@@ -54,7 +55,12 @@ def config_subplot(ax, maze_type=None, box_size=None, extra_lim=0., title=None):
 
 def skill_vis(ax, env, policy, skills, rollouts_per_skill, skill_length, box_size=None):
     # collect rollouts w/ policy (store unaugmented observations...) -> visualise rollouts
-    skill_trajectories = collect_skill_trajectories(env, policy, skills, rollouts_per_skill, skill_length)
+    try:
+        _ = iter(policy)
+    except:
+        policy, skill_length = [policy], [skill_length]
+
+    skill_trajectories = collect_hier_skill_trajectories(env, policy, skills, rollouts_per_skill, skill_length)
 
     cmap = get_cmap(len(skills))
     plot_all_skills(ax, cmap, skill_trajectories)
@@ -78,20 +84,26 @@ def plot_trajectory(ax, traj, color, alpha=0.5, linewidth=2, label=None):
     ax.plot(xs, ys, color=color, alpha=alpha, linewidth=linewidth, zorder=10, label=label)
 
 
-def collect_skill_trajectories(env, policy, skills, rollouts_per_skill, skill_length):
-    trajectories = [[] for _ in range(len(skills))]
+def collect_hier_skill_trajectories(env, policies, skills, rollouts_per_skill, skill_lengths):
+    trajectories = [[] for _ in skills]
 
     for i in range(len(skills)):
         for si in range(rollouts_per_skill):
+            subtraj = []
+            def append_to_skill_arr(item):
+                subtraj.append(tf.reshape(item.observation, (-1)))
+
+            traj_observers = [[append_to_skill_arr]] + [[] for _ in range(len(policies) - 1)]
             time_step = env.reset()
-            cur_traj = []
-            rollout_drivers.rollout_skill_trajectory(time_step, env, policy, rollout_drivers.preprocess_time_step, [cur_traj.append],skills[i], skill_length, return_aug_obs=False, s_norm=True)
-            trajectories[i].append(extract_obs(cur_traj))
+            rollout_drivers.rollout_hier_skill_trajectory(time_step, env, policies, rollout_drivers.preprocess_time_step,
+                                                     traj_observers, skills[i], skill_lengths, return_aug_obs=False, s_norm=True)
+            trajectories[i].append(subtraj)
 
     return trajectories
 
 
 def extract_obs(traj):
+    print(traj)
     return [tf.reshape(utils.hide_goal(subtraj.observation), (-1)) for subtraj in traj]
 
 

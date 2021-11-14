@@ -46,3 +46,12 @@ def hide_goal(obs):
 
 def get_sorted_files(dir):
     return sorted(os.listdir(dir), key=lambda x: os.path.getmtime(os.path.join(dir, x)))
+
+
+def graph_alpha(ax, steps, initial_entropy, target_entropy, entropy_anneal_steps, entropy_anneal_period, color="blue"):
+    alphas = []
+    for step in range(steps):
+        step = step % entropy_anneal_period if entropy_anneal_period is not None else step
+        alphas.append(initial_entropy - min((step / entropy_anneal_steps), 1) * (initial_entropy - target_entropy))
+    ax.plot(range(steps), alphas, linewidth=2, color=color)
+

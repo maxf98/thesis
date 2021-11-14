@@ -61,10 +61,9 @@ def vis_saved_policy(policy_dir, ax=None, cont=True, title=None, env=None, skill
     if env is None:
         env = TFPyEnvironment(point_environment.PointEnv(step_size=step_size, box_size=box_size))
     if cont:
-        skills = utils.discretize_continuous_space(-1, 1, skill_samples, skill_dim)
+        skills = utils.discretize_continuous_space(-1, 1, 3, skill_dim)
     else:
-        NUM_SKILLS = 8
-        skills = tf.one_hot(list(range(NUM_SKILLS)), NUM_SKILLS)
+        skills = tf.one_hot(list(range(skill_dim)), skill_dim)
 
     if ax is None:
         fig, ax = plt.subplots()
@@ -221,9 +220,9 @@ def vis_rand_pol_states(ax, env=None, step_size=0.1, rollout_length=10, num_roll
 
     states = states[::keep_every]
     xs, ys = [s[0] for s in states], [s[1] for s in states]
-    ax.scatter(xs, ys, color=color, alpha=alpha, s=0.5)
+    ax.scatter(xs, ys, color=color, alpha=alpha, s=1.)
 
-    point_env_vis.config_subplot(ax)
+    point_env_vis.config_subplot(ax, maze_type="square_bottleneck")
 
 
 def skill_pol_coverage(ax, policy, cont=True, step_size=0.1, skill_length=10, num_rollouts=100, keep_every=1, color='blue', alpha=0.8):
@@ -249,11 +248,14 @@ def skill_pol_coverage(ax, policy, cont=True, step_size=0.1, skill_length=10, nu
 
 def comp_rand_pol_coverage():
     fig, (ax1, ax2, ax3) = plt.subplots(1, 3)
-    vis_rand_pol_states(ax1, step_size=0.01, rollout_length=100, num_rollouts=100)
+    env0 = launcher.get_base_env("maze_square_bottleneck", point_env_step_size=1.0)
+    env1 = launcher.get_base_env("maze_square_bottleneck", point_env_step_size=2.0)
+    env2 = launcher.get_base_env("maze_square_bottleneck", point_env_step_size=5.0)
+    vis_rand_pol_states(ax1, env=env0, rollout_length=100, num_rollouts=100)
     ax1.set_title("δ = 0.01, T = 100")
-    vis_rand_pol_states(ax2, step_size=0.1, rollout_length=10, num_rollouts=100)
+    vis_rand_pol_states(ax2, env=env1, rollout_length=50, num_rollouts=100)
     ax2.set_title("δ = 0.1, T = 10")
-    vis_rand_pol_states(ax3, step_size=1., rollout_length=1, num_rollouts=100)
+    vis_rand_pol_states(ax3, env=env2, rollout_length=10, num_rollouts=100)
     ax3.set_title("δ = 1, T = 1")
 
     plt.show()
@@ -423,12 +425,12 @@ def vis_hierarchy_run(agent_path):
 
     fig, axes = plt.subplots(1, len(agents))
 
-    skills = utils.discretize_continuous_space(-1, 1, 3, 2)
+    skills = utils.discretize_continuous_space(-1, 1, 4, 2)
 
     for i in range(len(agents)):
         ax, env, policy = axes[i], envs[i], agents[i].policy_learner.policy
         skill_length = agents[i].rollout_driver.skill_length
-        box_size = 3
+        box_size = 10
         point_env_vis.skill_vis(ax, env, policy, box_size=box_size, skills=skills, rollouts_per_skill=1, skill_length=skill_length)
 
     plt.show()
@@ -641,20 +643,21 @@ def vis_robotics_env(agent_dir):
 
 
 def comp_runs():
-    dirs = [("../logs/thesis_hand/longerep10", "10"),
-                ("../logs/thesis_hand/longerep50", "50"),
-                ("../logs/thesis_hand/longerep100", "100")]
+    dirs = [("../logs/nav/discrete-4", "4"),
+            ("../logs/nav/discrete-6", "6"),
+                ("../logs/nav/discrete-8", "8"),
+                ("../logs/nav/discrete-10", "10"),
+                ("../logs/nav/discrete-20", "20")]
 
-    fig, (ax1, ax2, ax3) = plt.subplots(1, 3)
+    fig, (ax1, ax2) = plt.subplots(1, 2)
 
     for dir, label in dirs:
         discrim_acc = np.load(os.path.join(dir, "0/stats/discrim_acc.npy"))
         ir = np.load(os.path.join(dir, "0/stats/intrinsic_rewards.npy"))
         sac_loss = np.load(os.path.join(dir, "0/stats/policy_loss.npy"))
 
-        ax1.plot(range(len(discrim_acc)), discrim_acc, linewidth=2, alpha=0.5, label=label)
-        ax2.plot(range(len(ir)), ir, linewidth=2, label=label, alpha=0.5)
-        ax3.plot(range(len(sac_loss)), sac_loss, linewidth=2, label=label, alpha=0.5)
+        ax1.plot(range(300), discrim_acc[:300], linewidth=2, alpha=0.5, label=label)
+        ax2.plot(range(300), ir[:300], linewidth=2, label=label, alpha=0.5)
 
     ax1.set_title("Discriminator accuracy")
     ax1.set_ylabel(r"$E[q_\phi(z|s)]$")
@@ -664,7 +667,7 @@ def comp_runs():
     ax2.set_ylabel(r"$E[r_z(s)]$")
     ax2.set_xlabel("epoch")
 
-    ax3.legend()
+    ax2.legend()
 
     fig.savefig("../screenshots/traj_length_comp")
 
@@ -771,15 +774,65 @@ def blend_images(screener_dir):
     im.show()
 
 
+def vis_annealing_schedules():
+    fig, ax1 = plt.subplots()
+    utils.graph_alpha(ax1, 20000, 3.0, 0.1, 8000, None, color="blue")
+    utils.graph_alpha(ax1, 20000, 3.0, 0.05, 3000, 5000, color="green")
+    ax1.set_xlabel("step")
+    ax1.set_ylabel("α")
+    ax1.set_title("Annealing schedules")
+
+    ax1.set_xticks([])
+    ax1.set_yticks([0.1, 3.0])
+
+    plt.show()
+
+
+def vis_hierarchy_intermediate_steps(agent_dir):
+    envs, agents = load_agent(agent_dir)
+
+    base_env = envs[0]
+    policies = [agent.policy_learner.policy for agent in agents]
+    policies[-1] = SavedModelPyTFEagerPolicy(os.path.join(agent_dir, "2/policies/policy_40"), base_env.time_step_spec(), base_env.action_spec())
+
+    skill_lengths = [agent.rollout_driver.skill_length for agent in agents]
+
+    skills = utils.discretize_continuous_space(-1, 1, 3, agents[-1].skill_dim)
+
+    fig, ax = plt.subplots()
+    point_env_vis.skill_vis(ax, base_env, policies, skills, 3, skill_lengths, 10)
+    plt.show()
+
+
+def diayn_vis():
+    agent_dir = "../logs/nav/discrete2"
+    envs, agents = load_agent(agent_dir)
+    env = envs[0]
+    policy = agents[0].policy_learner.policy
+    policy = SavedModelPyTFEagerPolicy(os.path.join(agent_dir, "0/policies/policy_25"), env.time_step_spec(), env.action_spec())
+
+    discriminator = agents[0].skill_model
+
+    skills = utils.one_hots_for_num_skills(agents[0].skill_dim)
+
+    fig, (ax1, ax2) = plt.subplots(1, 2)
+    point_env_vis.skill_vis(ax1, env, policy, skills, 3, agents[0].rollout_driver.skill_length, box_size=1)
+    point_env_vis.categorical_discrim_heatmap(ax2, discriminator)
+
+    plt.show()
+
+
+
 if __name__ == '__main__':
-    agent_dir = "../logs/thesis_hand/hier"
-    screener_dir = "../screenshots/hand/interpol/"
+    """
+    policy_dir="../logs/nav/discrete-4/0/policies/policy_250"
+    fig, ax = plt.subplots()
+    vis_saved_policy(policy_dir, ax=ax, cont=False, title=None, env=None, skill_length=50, step_size=0.4,
+                     box_size=1.0, skill_dim=4, skill_samples=3)
+    plt.show()
+    """
+    #comp_runs()
+    vis_hierarchy_intermediate_steps("../logs/threelayerhier")
+    #diayn_vis()
 
-    skills = utils.discretize_continuous_space(-1, 1, 2, 4)
-    skills = utils.points_along_axis(3, 4, 4, -1.) #+ utils.points_along_axis(1, 4, 4) + utils.points_along_axis(2, 4, 4) + utils.points_along_axis(3, 4, 4)
-    skills = utils.random_samples(-1, 1, 4, 12)
-
-    generate_screenshots(agent_dir, screener_dir, skills)
-    make_skill_grid("../screenshots/hand/interpol", "random_samples")
-    #blend_images("../screenshots/hand/interpol")
 

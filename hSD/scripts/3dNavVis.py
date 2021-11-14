@@ -32,9 +32,10 @@ def vis_random_rollouts():
 def vis_saved_policy(policy_dir, cont=True, title=None, env=None, skill_length=25, step_size=0.1, box_size=1.):
     policy = tf.compat.v2.saved_model.load(policy_dir)
     if env is None:
-        env = TFPyEnvironment(point_environment.PointEnv(step_size=step_size, box_size=box_size))
+        env = point_environment.PointEnv(step_size=step_size, box_size=box_size, dim=3)
     if cont:
-        skills = utils.discretize_continuous_space(-1, 1, 2, 2)
+        #skills = utils.discretize_continuous_space(-1, 1, 2, 2)
+        skills = [[-1., -1.]]
     else:
         NUM_SKILLS = 8
         skills = tf.one_hot(list(range(NUM_SKILLS)), NUM_SKILLS)
@@ -53,7 +54,7 @@ def vis_saved_policy(policy_dir, cont=True, title=None, env=None, skill_length=2
 
 def skill_vis(ax, env, policy, skills, rollouts_per_skill, skill_length, box_size=None):
     # collect rollouts w/ policy (store unaugmented observations...) -> visualise rollouts
-    skill_trajectories = point_env_vis.collect_skill_trajectories(env, policy, skills, rollouts_per_skill, skill_length)
+    skill_trajectories = point_env_vis.collect_hier_skill_trajectories(env, policy, skills, rollouts_per_skill, skill_length)
 
     cmap = point_env_vis.get_cmap(len(skills))
     plot_all_skills(ax, cmap, skill_trajectories)
@@ -78,7 +79,36 @@ def plot_trajectory(ax, traj, color, alpha=0.5, linewidth=2):
     ax.plot3D(xs, ys, zs, color=color, alpha=alpha, linewidth=linewidth, zorder=10)
 
 
+def rollout_single_trajectory():
+    fig = plt.figure()
+    ax = plt.axes(projection='3d')
+
+    env = point_environment.PointEnv(step_size=0.1, box_size=1, dim=3)
+    policy = RandomPyPolicy(env.time_step_spec(), env.action_spec())
+    trajectory = []
+    timestep = env.reset()
+    for _ in range(150):
+        trajectory.append(timestep.observation)
+        actionstep = policy.action(timestep)
+        timestep = env.step(actionstep.action)
+
+    plot_trajectory(ax, trajectory, "green")
+    ax.plot3D(0., 0., 0., marker='o', markersize=8,
+              color='black', zorder=11)
+
+    ax.set_xticks([-1, 0, 1])
+    ax.set_yticks([-1, 0, 1])
+    ax.set_zticks([-1, 0, 1])
+
+    ax.axes.set_xlim3d(left=-1, right=1)
+    ax.axes.set_ylim3d(bottom=-1, top=1)
+    ax.axes.set_zlim3d(bottom=-1, top=1)
+
+    plt.show()
+
+
+
 
 
 if __name__ == "__main__":
-    vis_saved_policy("../iglogs/3dnav-2ds/0/policies/policy_10")
+    rollout_single_trajectory()
